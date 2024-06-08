@@ -52,5 +52,5 @@ tmp/
 *.pyc
 
 # build & installation
-./build
-./installation
+build/
+installation/
