@@ -28,31 +28,33 @@ class Value;
 
 namespace polymer {
 
-class OslScop;
-class OslSymbolTable;
+    class OslScop;
+    class OslSymbolTable;
 
-std::unique_ptr<OslScop> createOpenScopFromFuncOp(mlir::FuncOp funcOp,
-                                                  OslSymbolTable &symTable);
+    std::unique_ptr<OslScop> createOpenScopFromFuncOp(mlir::FuncOp funcOp,
+                                                    OslSymbolTable &symTable);
 
-/// Create a function (FuncOp) from the given OpenScop object in the given
-/// module (ModuleOp).
-mlir::Operation *
-createFuncOpFromOpenScop(std::unique_ptr<OslScop> scop, mlir::ModuleOp module,
-                         OslSymbolTable &symTable, mlir::MLIRContext *context,
-                         PlutoProg *prog = nullptr,
-                         const char *dumpClastAfterPluto = nullptr);
+    /// Create a function (FuncOp) from the given OpenScop object in the given
+    /// module (ModuleOp).
+    mlir::Operation *createFuncOpFromOpenScop(std::unique_ptr<OslScop> scop, 
+                                              mlir::ModuleOp module,
+                                              OslSymbolTable &symTable, 
+                                              mlir::MLIRContext *context,
+                                              PlutoProg *prog = nullptr,
+                                              const char *dumpClastAfterPluto = nullptr);
+                                              
 
-mlir::OwningOpRef<mlir::ModuleOp>
-translateOpenScopToModule(std::unique_ptr<OslScop> scop,
-                          mlir::MLIRContext *context);
+    mlir::OwningOpRef<mlir::ModuleOp>
+    translateOpenScopToModule(std::unique_ptr<OslScop> scop,
+                            mlir::MLIRContext *context);
 
-mlir::LogicalResult translateModuleToOpenScop(
-    mlir::ModuleOp module,
-    llvm::SmallVectorImpl<std::unique_ptr<OslScop>> &scops,
-    llvm::raw_ostream &os);
+    mlir::LogicalResult translateModuleToOpenScop(
+        mlir::ModuleOp module,
+        llvm::SmallVectorImpl<std::unique_ptr<OslScop>> &scops,
+        llvm::raw_ostream &os);
 
-void registerToOpenScopTranslation();
-void registerFromOpenScopTranslation();
+    void registerToOpenScopTranslation();
+    void registerFromOpenScopTranslation();
 
 } // namespace polymer
 
