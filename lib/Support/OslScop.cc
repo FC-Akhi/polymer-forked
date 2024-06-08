@@ -487,9 +487,9 @@ void OslScop::addBodyExtension(int stmtId, const ScopStmt &stmt) {
 
   addGeneric(stmtId + 1, "body", body);
 }
-
-void OslScop::initializeSymbolTable(mlir::FuncOp f,
-                                    FlatAffineValueConstraints *cst) {
+/// 1. NEED TO TRACE DOWN
+void OslScop::initializeSymbolTable(mlir::FuncOp f, FlatAffineValueConstraints *cst) {
+  
   symbolTable.clear();
 
   unsigned numDimIds = cst->getNumDimIds();
