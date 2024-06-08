@@ -50,3 +50,7 @@ tmp/
 
 # Python
 *.pyc
+
+# build & installation
+./build
+./installation
