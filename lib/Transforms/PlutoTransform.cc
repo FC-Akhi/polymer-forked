@@ -62,7 +62,9 @@ namespace {
       *this, 
       "dump-clast-after-pluto",
       llvm::cl::desc("File name for dumping the CLooG AST (clast) after Pluto optimization.")
-    
+      
+      /// F:
+      // llvm::cl::init(false)
     };
 
 
@@ -303,13 +305,16 @@ static mlir::FuncOp plutoTransform(mlir::FuncOp f,
                                    int cloogl = -1,
                                    bool diamondTiling = false) {
 
+
+                                                                       
+  
   LLVM_DEBUG(dbgs() << "Pluto transforming: \n");
 
   
   LLVM_DEBUG(f.dump());
 
   /// F: add the message
-  printf("mlir::FuncOp is dumped!!!\n");
+  std::printf("mlir::FuncOp is dumped!!!\n");
 
   PlutoContext *context = pluto_context_alloc();
   OslSymbolTable srcTable, dstTable;
@@ -341,6 +346,13 @@ static mlir::FuncOp plutoTransform(mlir::FuncOp f,
   if (cloogl != -1)
     context->options->cloogl = cloogl;
 
+  
+
+
+  std::printf("================================scop after createOpenScopFromFuncOp===========================\n");
+  osl_scop_print(stderr, scop->get());
+
+
   PlutoProg *prog = osl_scop_to_pluto_prog(scop->get(), context);
   pluto_schedule_prog(prog);
   pluto_populate_scop(scop->get(), prog, context);
@@ -352,20 +364,50 @@ static mlir::FuncOp plutoTransform(mlir::FuncOp f,
   
   }
 
-  // osl_scop_print(stderr, scop->get());
+  std::printf("================================scop after pluto_populate_scop method===========================\n");
+  osl_scop_print(stderr, scop->get());
 
   const char *dumpClastAfterPlutoStr = nullptr;
   
-  if (!dumpClastAfterPluto.empty())
+
+  /// method empty() returns true if the string is empty 
+  if (!dumpClastAfterPluto.empty()) {
   
     dumpClastAfterPlutoStr = dumpClastAfterPluto.c_str();
 
+    /// F:
+    std::printf("=========================dumpClastAfterPluto=====================================\n");
+    std::printf("%s\n", dumpClastAfterPlutoStr);
+
+
+  }
+
+
+  
+
+
+  /// Cast the parent operation of f to mlir::ModuleOp.
   mlir::ModuleOp m = dyn_cast<mlir::ModuleOp>(f->getParentOp());
 
+
+  /// F: add the message
+  std::printf("mlir::ModuleOp m is dumping....\n");
+  LLVM_DEBUG(m.dump());
+
+  
+
+
+
+
+  /// This declares a vector argAttrs that will hold DictionaryAttr objects.
+  /// DictionaryAttr is a type in MLIR that represents a dictionary of named attributes. 
+  /// It is typically used to store a collection of key-value pairs, where keys are strings and values are attributes.
   SmallVector<DictionaryAttr> argAttrs;
   
+  /// Collect all argument attributes of f.
   f.getAllArgAttrs(argAttrs);
 
+  /// Create a new function g from the transformed OpenScop using createFuncOpFromOpenScop.
   mlir::FuncOp g = cast<mlir::FuncOp>(createFuncOpFromOpenScop(
                                                               std::move(scop), 
                                                               m, 
@@ -373,9 +415,16 @@ static mlir::FuncOp plutoTransform(mlir::FuncOp f,
                                                               rewriter.getContext(), 
                                                               prog,
                                                               dumpClastAfterPlutoStr)
-                                      );
+  );
   
+  /// sets all the collected argument attributes from argAttrs on the new function g.
   g.setAllArgAttrs(argAttrs);
+
+  /// F: add the message
+  std::printf("mlir::FuncOp g is dumping....\n");
+  LLVM_DEBUG(g.dump());
+
+
 
   pluto_context_free(context);
   
@@ -432,7 +481,16 @@ namespace {
     void runOnOperation() override {
       
       /// F: add the message
-      printf("HIT FROM INSIDE THE runOnOperation() method from PlutoTransformPass class\n");
+      std::printf("HIT FROM INSIDE THE runOnOperation() method from PlutoTransformPass class\n");
+
+      std::printf("dumpClastAfterPluto: %s\n", dumpClastAfterPluto.c_str());
+      std::printf("parallelize: %d\n", parallelize);
+      std::printf("debug: %d\n", debug);
+      std::printf("cloogf: %d\n", cloogf);
+      std::printf("cloogl: %d\n", cloogl);
+      std::printf("diamondTiling: %d\n", diamondTiling);
+      
+
 
 
       /// Retrieves the mlir::ModuleOp that this pass will operates on 
@@ -452,14 +510,14 @@ namespace {
 
 
       /// Walk through all functions in the module.
-      /// If a function does not have the 'scop.stmt' attribute and is not marked as ignored,
+      /// If a function does not have the 'scop.stmt' attribute and is not marked as scop.ignored,
       /// add it to the funcOps vector.
       m.walk([&](mlir::FuncOp f) {
     
         if (!f->getAttr("scop.stmt") && !f->hasAttr("scop.ignored")) {
           
           /// F: add the message
-          printf("HIT FROM INSIDE THE forloop after checking scop.stmt and scop.ignored\n");
+          std::printf("HIT FROM INSIDE THE forloop after checking scop.stmt and scop.ignored\n");
 
 
           funcOps.push_back(f);
@@ -476,9 +534,9 @@ namespace {
         if (mlir::FuncOp g = plutoTransform(f, b, dumpClastAfterPluto, parallelize, debug, cloogf, cloogl, diamondTiling)) {
           
           /// F: add the message
-          printf("HIT FROM INSIDE THE 2nd forloop after checking condition\n");  
+          std::printf("HIT FROM INSIDE THE 2nd forloop after checking condition\n");  
 
-          funcMap[f] = g;              /// Store the transformed function
+          funcMap[f] = g;              /// Store the transformed function g of original function f
           g.setPublic();               /// Make the transformed function public
           g->setAttrs(f->getAttrs());  /// Copy attributes from the original function to the transformed function
         
@@ -491,7 +549,7 @@ namespace {
       for (const auto &it : funcMap) {
         
         /// F: add the message
-        printf("HIT FROM INSIDE THE 3rd forloop\n");
+        std::printf("HIT FROM INSIDE THE 3rd forloop\n");
 
         mlir::FuncOp from, to;
         std::tie(from, to) = it;
@@ -521,8 +579,8 @@ namespace {
 /// @param f : mlir::FuncOp type
 static void dedupIndexCast(FuncOp f) {
   
-
-  printf("===================******************HIT from inside dedupIndexCast======================\n");
+  std::printf("=======================================DEDUP=====================================\n");
+  
 
   if (f.getBlocks().empty())
     return;
@@ -543,7 +601,7 @@ static void dedupIndexCast(FuncOp f) {
   
       auto arg = indexCast.getOperand().dyn_cast<BlockArgument>();
 
-      // printf("===================******************HIT after index_cast condition check======================");
+      
   
       if (argToCast.count(arg)) {
   
@@ -619,7 +677,7 @@ namespace {
 void polymer::registerPlutoTransformPass() {
 
   /// F: For debugging- this line is printed and this method is called inside polymer-opt
-  printf("Inside register pluto transformpass()\n");
+  std::printf("Inside register pluto transformpass()\n");
 
 
 

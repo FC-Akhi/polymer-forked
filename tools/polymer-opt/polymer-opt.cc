@@ -34,6 +34,9 @@
 #include "llvm/Support/MemoryBuffer.h"
 #include "llvm/Support/ToolOutputFile.h"
 
+
+#include<iostream>
+
 using namespace llvm;
 using namespace mlir;
 using namespace polymer;
@@ -41,6 +44,7 @@ using namespace polymer;
 int main(int argc, char *argv[]) {
   DialectRegistry registry;
 
+  std::printf("Before registry.insert!!!!!\n");
   // Register MLIR stuff
   registry.insert<mlir::func::FuncDialect>();
   registry.insert<mlir::AffineDialect>();
@@ -50,12 +54,18 @@ int main(int argc, char *argv[]) {
   registry.insert<mlir::arith::ArithmeticDialect>();
   registry.insert<mlir::LLVM::LLVMDialect>();
 
+  std::printf("After registry.insert!!!!!\n");
+
+  
 // Register the standard passes we want.
 #include "mlir/Transforms/Passes.h.inc"
   registerCanonicalizerPass();
   registerCSEPass();
   registerInlinerPass();
   registerAffineScalarReplacementPass();
+  
+  
+  std::printf("Before registerPlutoTransformPass() called from polymer-opt!!!!!\n");
   // Register polymer specific passes.
   registerPlutoTransformPass();
   registerRegToMemPass();

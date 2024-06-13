@@ -44,6 +44,9 @@ extern "C" {
 #include "llvm/Support/FormatVariadic.h"
 #include "llvm/Support/SourceMgr.h"
 
+
+#include <iostream>
+
 using namespace polymer;
 using namespace mlir;
 
@@ -1510,7 +1513,12 @@ mlir::Operation *polymer::createFuncOpFromOpenScop(
     transformClastByPlutoProg(rootStmt, prog, options, prog->context->options);
 
   FILE *clastPrintFile = stderr;
+
+
   if (dumpClastAfterPluto) {
+    
+    std::printf("=========================dumpClastAfterPluto=====================================\n");
+
     clastPrintFile = fopen(dumpClastAfterPluto, "w");
     assert(clastPrintFile &&
            "File for clast dump after Pluto cannot be opened.");
