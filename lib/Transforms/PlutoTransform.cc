@@ -182,6 +182,8 @@ static void plutoParallelize(mlir::AffineForOp forOp, OpBuilder b) {
   // as it does not have implicit 'max' behavior.
   AffineMap lowerBoundMap = forOp.getLowerBoundMap();
   ValueRange lowerBoundOperands = forOp.getLowerBoundOperands();
+
+  
   AffineMap upperBoundMap = forOp.getUpperBoundMap();
   ValueRange upperBoundOperands = forOp.getUpperBoundOperands();
 
@@ -308,17 +310,22 @@ static mlir::FuncOp plutoTransform(mlir::FuncOp f,
 
                                                                        
   
-  LLVM_DEBUG(dbgs() << "Pluto transforming: \n");
-
-  
+  LLVM_DEBUG(dbgs() << "Pluto transforming: \n");  
   LLVM_DEBUG(f.dump());
-
   /// F: add the message
   std::printf("mlir::FuncOp is dumped!!!\n");
 
+
+
+  /// Pluto Context Allocation & two OslSymbolTable type variable declaration
   PlutoContext *context = pluto_context_alloc();
   OslSymbolTable srcTable, dstTable;
 
+
+
+
+
+  /// Create OpenScop representation from mlir::FuncOp f
   std::unique_ptr<OslScop> scop = createOpenScopFromFuncOp(f, srcTable);
   
   if (!scop)
@@ -327,6 +334,13 @@ static mlir::FuncOp plutoTransform(mlir::FuncOp f,
   if (scop->getNumStatements() == 0)
     return nullptr;
 
+
+
+
+
+
+
+  /// Configure Pluto Context or more specifically options related to pluto
   // Should use isldep, candl cannot work well for this case.
   context->options->silent = !debug;
   context->options->moredebug = debug;
@@ -346,17 +360,24 @@ static mlir::FuncOp plutoTransform(mlir::FuncOp f,
   if (cloogl != -1)
     context->options->cloogl = cloogl;
 
-  
-
-
   std::printf("================================scop after createOpenScopFromFuncOp===========================\n");
   osl_scop_print(stderr, scop->get());
 
 
-  PlutoProg *prog = osl_scop_to_pluto_prog(scop->get(), context);
-  pluto_schedule_prog(prog);
-  pluto_populate_scop(scop->get(), prog, context);
 
+
+
+  /// Pluto Transformation operation on scop
+  PlutoProg *prog = osl_scop_to_pluto_prog(scop->get(), context); /// Convert the OpenScop to a Pluto program
+  pluto_schedule_prog(prog);                                      /// Run transformation Pluto prog
+  pluto_populate_scop(scop->get(), prog, context);                /// Replace previous scop contents(populating transformed scop) 
+                                                                  /// with new transformed contents with the help of Pluto prog
+
+
+
+
+
+  /// Debug Flush
   if (debug) { // Otherwise things dumped afterwards will mess up.
   
     fflush(stderr);
@@ -364,34 +385,29 @@ static mlir::FuncOp plutoTransform(mlir::FuncOp f,
   
   }
 
+
+
+
   std::printf("================================scop after pluto_populate_scop method===========================\n");
   osl_scop_print(stderr, scop->get());
 
-  const char *dumpClastAfterPlutoStr = nullptr;
-  
 
+
+  const char *dumpClastAfterPlutoStr = nullptr;
   /// method empty() returns true if the string is empty 
   if (!dumpClastAfterPluto.empty()) {
   
     dumpClastAfterPlutoStr = dumpClastAfterPluto.c_str();
 
-    /// F:
-    std::printf("=========================dumpClastAfterPluto=====================================\n");
-    std::printf("%s\n", dumpClastAfterPlutoStr);
-
 
   }
 
 
-  
-
 
   /// Cast the parent operation of f to mlir::ModuleOp.
   mlir::ModuleOp m = dyn_cast<mlir::ModuleOp>(f->getParentOp());
-
-
   /// F: add the message
-  std::printf("mlir::ModuleOp m is dumping....\n");
+  std::printf("mlir::ModuleOp m is dumping from inside method....\n");
   LLVM_DEBUG(m.dump());
 
   
@@ -407,6 +423,10 @@ static mlir::FuncOp plutoTransform(mlir::FuncOp f,
   /// Collect all argument attributes of f.
   f.getAllArgAttrs(argAttrs);
 
+
+
+   
+
   /// Create a new function g from the transformed OpenScop using createFuncOpFromOpenScop.
   mlir::FuncOp g = cast<mlir::FuncOp>(createFuncOpFromOpenScop(
                                                               std::move(scop), 
@@ -417,8 +437,17 @@ static mlir::FuncOp plutoTransform(mlir::FuncOp f,
                                                               dumpClastAfterPlutoStr)
   );
   
+
+  /// F:
+  std::printf("=========================dumpClastAfterPluto=====================================\n");
+  std::printf("%s\n", dumpClastAfterPluto.c_str());
+
+
   /// sets all the collected argument attributes from argAttrs on the new function g.
   g.setAllArgAttrs(argAttrs);
+
+
+
 
   /// F: add the message
   std::printf("mlir::FuncOp g is dumping....\n");
@@ -496,6 +525,10 @@ namespace {
       /// Retrieves the mlir::ModuleOp that this pass will operates on 
       mlir::ModuleOp m = getOperation();
       
+      // F: add the message
+      std::printf("mlir::ModuleOp m is dumping inside the pass not the method....\n");
+      LLVM_DEBUG(m.dump());
+
 
       /// Creates an mlir::OpBuilder for creating new operations
       mlir::OpBuilder b(m.getContext());
@@ -539,10 +572,46 @@ namespace {
           funcMap[f] = g;              /// Store the transformed function g of original function f
           g.setPublic();               /// Make the transformed function public
           g->setAttrs(f->getAttrs());  /// Copy attributes from the original function to the transformed function
+
         
         }
 
       }
+    
+
+
+      /// F: print the funcMap
+      for (auto &entry : funcMap) {
+        mlir::FuncOp keyFunc = entry.first;
+        mlir::FuncOp valueFunc = entry.second;
+
+        std::printf("mlir::FuncOp key dumping from fucking map....\n");
+        LLVM_DEBUG(keyFunc.dump());
+
+        llvm::outs() << "Function: " << keyFunc.getName() << "\n";
+        llvm::outs() << "Attributes:\n";
+
+        for (auto attr : keyFunc->getAttrs()) {
+          llvm::outs() << "  " << attr.getName() << " = " << attr.getValue() << "\n";
+        }
+
+
+
+
+        std::printf("mlir::FuncOp value dumping from fucking map....\n");
+        LLVM_DEBUG(valueFunc.dump());
+
+        llvm::outs() << "Function: " << valueFunc.getName() << "\n";
+        llvm::outs() << "Attributes:\n";
+
+        for (auto attr : valueFunc->getAttrs()) {
+          llvm::outs() << "  " << attr.getName() << " = " << attr.getValue() << "\n";
+        }
+
+      }
+
+
+
       
       // Finally, we delete the definition of the original function, and make the
       // Pluto optimized version have the same name.
@@ -557,6 +626,19 @@ namespace {
         to.setName(std::string(from.getName()));
         from.erase();
       
+      }
+
+      std::printf("After erasing original!!!");
+
+      /// F: print the funcMap
+      for (auto &entry : funcMap) {
+        mlir::FuncOp keyFunc = entry.first;
+        mlir::FuncOp valueFunc = entry.second;
+
+        std::printf("mlir::FuncOp key dumping from fucking map....\n");
+        // LLVM_DEBUG(keyFunc.dump());
+        std::printf("mlir::FuncOp value dumping from fucking map....\n");
+        LLVM_DEBUG(valueFunc.dump());
       }
     
     }
