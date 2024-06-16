@@ -959,132 +959,6 @@ static std::unique_ptr<OslScop> readOpenScop(llvm::MemoryBufferRef buf) {
 
 }
 
-static void updateCloogOptionsByPlutoProg(CloogOptions *options, const PlutoProg *prog) {
-
-  Stmt **stmts = prog->stmts;
-  
-  int nstmts = prog->nstmts;
-
-  options->fs = (int *)malloc(nstmts * sizeof(int));
-  
-  options->ls = (int *)malloc(nstmts * sizeof(int));
-  
-  options->fs_ls_size = nstmts;
-
-  for (int i = 0; i < nstmts; i++) {
-  
-    options->fs[i] = -1;
-    options->ls[i] = -1;
-  
-  }
-
-  if (prog->context->options->cloogf >= 1 && prog->context->options->cloogl >= 1) {
-
-    options->f = prog->context->options->cloogf;
-    options->l = prog->context->options->cloogl;
-  
-  } else {
-  
-    if (prog->context->options->tile) {
-  
-      for (int i = 0; i < nstmts; i++) {
-  
-        options->fs[i] = get_first_point_loop(stmts[i], prog) + 1;
-        options->ls[i] = prog->num_hyperplanes;
-  
-      }
-  
-    } else {
-  
-      options->f = 1;
-      options->l = prog->num_hyperplanes;
-  
-    }
-  
-  }
-
-}
-
-static void unrollJamClastByPlutoProg(clast_stmt *root, 
-                                      const PlutoProg *prog,
-                                      CloogOptions *cloogOptions,
-                                      unsigned ufactor) {
-  
-  unsigned numPloops;
-  
-  Ploop **ploops = pluto_get_parallel_loops(prog, &numPloops);
-
-  for (unsigned i = 0; i < numPloops; i++) {
-  
-    if (!pluto_loop_is_innermost(ploops[i], prog))
-  
-      continue;
-
-    std::string iter(formatv("t{0}", ploops[i]->depth + 1));
-
-    // Collect all statements within the current parallel loop.
-    SmallVector<int, 8> stmtIds(ploops[i]->nstmts);
-  
-    for (unsigned j = 0; j < ploops[i]->nstmts; j++)
-  
-      stmtIds[j] = ploops[i]->stmts[j]->id + 1;
-
-    ClastFilter filter = {/*iter=*/iter.c_str(),
-                          /*stmts_filter=*/stmtIds.data(),
-                          /*nstmts_filter=*/static_cast<int>(ploops[i]->nstmts),
-                          /*filter_type=*/subset};
-
-    clast_for **loops;
-    unsigned numLoops, numStmts;
-    int *stmts;
-  
-    clast_filter(root, filter, &loops, (int *)&numLoops, &stmts, (int *)&numStmts);
-
-    // There should be at least one loops.
-    if (numLoops == 0) {
-    
-      free(loops);
-      free(stmts);
-      continue;
-    
-    }
-
-    for (unsigned j = 0; j < numLoops; j++)
-    
-      loops[j]->parallel += CLAST_PARALLEL_VEC;
-
-    free(loops);
-    free(stmts);
-  
-  }
-
-  pluto_loops_free(ploops, numPloops);
-
-  // Call clast transformation.
-  clast_unroll_jam(root);
-
-}
-
-static void markParallel(clast_stmt *root, const PlutoProg *prog, CloogOptions *cloogOptions) {
-  
-  pluto_mark_parallel(root, prog, cloogOptions);
-
-}
-
-static void transformClastByPlutoProg(clast_stmt *root, 
-                                      const PlutoProg *prog,
-                                      CloogOptions *cloogOptions,
-                                      PlutoOptions *plutoOptions) {
-
-  if (plutoOptions->unrolljam)
-
-    unrollJamClastByPlutoProg(root, prog, cloogOptions, plutoOptions->ufactor);
-  
-  if (plutoOptions->parallel)
-  
-    markParallel(root, prog, cloogOptions);
-
-}
 
 
 
@@ -1967,6 +1841,9 @@ void Importer::initializeFuncOpInterface() {
 
 }
 
+
+
+
 LogicalResult Importer::processStmt(clast_assignment *ass) {
 
   printf("inside assignement\n");
@@ -2287,6 +2164,154 @@ LogicalResult Importer::processStmtList(clast_stmt *s) {
 
 
 
+
+
+
+
+
+
+
+
+static void unrollJamClastByPlutoProg(clast_stmt *root, 
+                                      const PlutoProg *prog,
+                                      CloogOptions *cloogOptions,
+                                      unsigned ufactor) {
+  
+  unsigned numPloops;
+  
+  Ploop **ploops = pluto_get_parallel_loops(prog, &numPloops);
+
+  for (unsigned i = 0; i < numPloops; i++) {
+  
+    if (!pluto_loop_is_innermost(ploops[i], prog))
+  
+      continue;
+
+    std::string iter(formatv("t{0}", ploops[i]->depth + 1));
+
+    // Collect all statements within the current parallel loop.
+    SmallVector<int, 8> stmtIds(ploops[i]->nstmts);
+  
+    for (unsigned j = 0; j < ploops[i]->nstmts; j++)
+  
+      stmtIds[j] = ploops[i]->stmts[j]->id + 1;
+
+    ClastFilter filter = {/*iter=*/iter.c_str(),
+                          /*stmts_filter=*/stmtIds.data(),
+                          /*nstmts_filter=*/static_cast<int>(ploops[i]->nstmts),
+                          /*filter_type=*/subset};
+
+    clast_for **loops;
+    unsigned numLoops, numStmts;
+    int *stmts;
+  
+    clast_filter(root, filter, &loops, (int *)&numLoops, &stmts, (int *)&numStmts);
+
+    // There should be at least one loops.
+    if (numLoops == 0) {
+    
+      free(loops);
+      free(stmts);
+      continue;
+    
+    }
+
+    for (unsigned j = 0; j < numLoops; j++)
+    
+      loops[j]->parallel += CLAST_PARALLEL_VEC;
+
+    free(loops);
+    free(stmts);
+  
+  }
+
+  pluto_loops_free(ploops, numPloops);
+
+  // Call clast transformation.
+  clast_unroll_jam(root);
+
+}
+
+static void markParallel(clast_stmt *root, const PlutoProg *prog, CloogOptions *cloogOptions) {
+  
+  pluto_mark_parallel(root, prog, cloogOptions);
+
+}
+
+
+
+static void transformClastByPlutoProg(clast_stmt *root, 
+                                      const PlutoProg *prog,
+                                      CloogOptions *cloogOptions,
+                                      PlutoOptions *plutoOptions) {
+
+  if (plutoOptions->unrolljam)
+
+    unrollJamClastByPlutoProg(root, prog, cloogOptions, plutoOptions->ufactor);
+  
+  if (plutoOptions->parallel)
+  
+    markParallel(root, prog, cloogOptions);
+
+}
+
+
+
+
+/// @brief Updating Options of cloog by the options of Pluto prog
+/// @param options : It is the pointer to cloog options
+/// @param prog : It is the pointer to pluto prog
+static void updateCloogOptionsByPlutoProg(CloogOptions *options, const PlutoProg *prog) {
+
+  Stmt **stmts = prog->stmts;
+  
+  int nstmts = prog->nstmts;
+
+  options->fs = (int *)malloc(nstmts * sizeof(int));
+  
+  options->ls = (int *)malloc(nstmts * sizeof(int));
+  
+  options->fs_ls_size = nstmts;
+
+  for (int i = 0; i < nstmts; i++) {
+  
+    options->fs[i] = -1;
+    options->ls[i] = -1;
+  
+  }
+
+  if (prog->context->options->cloogf >= 1 && prog->context->options->cloogl >= 1) {
+
+    options->f = prog->context->options->cloogf;
+    options->l = prog->context->options->cloogl;
+  
+  } else {
+  
+    if (prog->context->options->tile) {
+  
+      for (int i = 0; i < nstmts; i++) {
+  
+        options->fs[i] = get_first_point_loop(stmts[i], prog) + 1;
+        options->ls[i] = prog->num_hyperplanes;
+  
+      }
+  
+    } else {
+  
+      options->f = 1;
+      options->l = prog->num_hyperplanes;
+  
+    }
+  
+  }
+
+}
+
+
+
+
+
+
 mlir::Operation *polymer::createFuncOpFromOpenScop(std::unique_ptr<OslScop> scop, ModuleOp module, OslSymbolTable &symTable,
                                                   MLIRContext *context, PlutoProg *prog, const char *dumpClastAfterPluto) {
   
@@ -2299,20 +2324,28 @@ mlir::Operation *polymer::createFuncOpFromOpenScop(std::unique_ptr<OslScop> scop
 
 
   // TODO: turn these C struct into C++ classes.
-  CloogState *state = cloog_state_malloc();
-  CloogOptions *options = cloog_options_malloc(state);
+  CloogState *state = cloog_state_malloc();  /// sets the cloog state
+
+  /// Its like a big box with tiny little box for many things needed for cloog
+  CloogOptions *options = cloog_options_malloc(state); /// cloog state is stored in options state. And there are more other options sets
 
   options->openscop = 1; // The input file in the OpenScop format
   options->scop = scop->get(); // Get the raw scop pointer
 
-  // THIS is the culprit
+
+
+  /// Generates a cloog input from Openscop data. This function translates an OpenScop scop to a CLooG input.
   CloogInput *input = cloog_input_from_osl_scop(options->state, scop->get());
 
+
+  /// This function extracts CLooG option values from an OpenScop scop and
+  /// updates an existing CloogOption structure with those values. If the
+  /// options were already set, they are updated without warning.
   cloog_options_copy_from_osl_scop(scop->get(), options);
   
   
   
-  //+++++++++++++++++++++CLOOG contents printing+++++++++++++++++++
+  ///F: +++++++++++++++++++++CLOOG contents printing+++++++++++++++++++
   cloog_input_dump_cloog(cloogOutFromScop, input, options);
 
   
@@ -2320,19 +2353,23 @@ mlir::Operation *polymer::createFuncOpFromOpenScop(std::unique_ptr<OslScop> scop
   
   if (prog != nullptr)
     
+
     updateCloogOptionsByPlutoProg(options, prog);
 
-  // Create cloog_program
+
+
+
+  /// Construct a CloogProgram structure from a given context and
+  /// union domain representing the iteration domains and scattering functions.
   CloogProgram *program = cloog_program_alloc(input->context, input->ud, options);
   
   assert(program->loop);
 
   
+  /// F: generates a structure like from cloog
   program = cloog_program_generate(program, options);
-
-
-
-  // +++++++++++++++++++Print Program+++++++++++++++++++++++++++++++++++
+  
+  /// F: +++++++++++++++++++Print Program+++++++++++++++++++++++++++++++++++
   cloog_program_print(cloogProgram, program);
 
   
@@ -2351,15 +2388,20 @@ mlir::Operation *polymer::createFuncOpFromOpenScop(std::unique_ptr<OslScop> scop
   // Convert to clast
   clast_stmt *rootStmt = cloog_clast_create(program, options);
 
+
   
   assert(rootStmt);
-  
+
+
+
   if (prog != nullptr)
     
     transformClastByPlutoProg(rootStmt, prog, options, prog->context->options);
 
+
+
+
   FILE *clastPrintFile_1 = stderr;
-  
   if (dumpClastAfterPluto) {
   
     clastPrintFile_1 = fopen(dumpClastAfterPluto, "w");
