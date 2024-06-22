@@ -52,12 +52,19 @@ int main(int argc, char *argv[]) {
 
 // Register the standard passes we want.
 #include "mlir/Transforms/Passes.h.inc"
+  
   registerCanonicalizerPass();
   registerCSEPass();
   registerInlinerPass();
+
+
   registerAffineScalarReplacementPass();
-  // Register polymer specific passes.
+  
+  
+  // Register polymer specific passes
   registerPlutoTransformPass();
+  
+  
   registerRegToMemPass();
   registerExtractScopStmtPass();
   registerScopStmtOptPasses();

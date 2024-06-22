@@ -2,9 +2,9 @@
     "initializeFuncOpInterface()": {
         "oslValueTable": {
             "<block argument> of type 'index' at index: 0": [
-                "i0",
                 "i2",
-                "i1"
+                "i1",
+                "i0"
             ],
             "%1 = memref.alloc() : memref<64x64xf32>": [
                 "A2"

@@ -14,6 +14,8 @@
 #include "pluto/internal/pluto.h"
 #include "pluto/osl_pluto.h"
 #include "pluto/pluto.h"
+
+
 extern "C" {
 #include "pluto/internal/ast_transform.h"
 }
@@ -65,85 +67,89 @@ typedef llvm::StringMap<mlir::Operation *> StmtOpMap;
 typedef llvm::StringMap<mlir::Value> NameValueMap;
 typedef llvm::StringMap<std::string> IterScatNameMap;
 
+
+
+/// @brief : AffineExprBuilder class
 namespace {
-typedef llvm::StringMap<mlir::Value> SymbolTable;
 
-/// Build AffineExpr from a clast_expr.
-/// TODO: manage the priviledge.
-class AffineExprBuilder {
-public:
-  AffineExprBuilder(MLIRContext *context, OslSymbolTable *symTable,
-                    SymbolTable *symbolTable, OslScop *scop,
-                    CloogOptions *options)
-      : b(context), context(context), scop(scop), symTable(symTable),
-        symbolTable(symbolTable), options(options) {
-    reset();
-  }
 
-  LogicalResult process(clast_expr *expr,
+  typedef llvm::StringMap<mlir::Value> SymbolTable;
+
+  /// Build AffineExpr from a clast_expr.
+  /// TODO: manage the priviledge.
+  class AffineExprBuilder {
+  
+  public:
+    
+    
+    AffineExprBuilder(MLIRContext *context, OslSymbolTable *symTable,
+                      SymbolTable *symbolTable, OslScop *scop,
+                      CloogOptions *options)
+        : b(context), context(context), scop(scop), symTable(symTable),
+          symbolTable(symbolTable), options(options) {
+      reset();
+    }
+
+    LogicalResult process(clast_expr *expr,
+                          llvm::SmallVectorImpl<AffineExpr> &affExprs);
+
+    void reset();
+
+    LogicalResult process(clast_name *expr,
+                          llvm::SmallVectorImpl<AffineExpr> &affExprs);
+    LogicalResult process(clast_term *expr,
+                          llvm::SmallVectorImpl<AffineExpr> &affExprs);
+    LogicalResult process(clast_binary *expr,
+                          llvm::SmallVectorImpl<AffineExpr> &affExprs);
+    LogicalResult process(clast_reduction *expr,
+                          llvm::SmallVectorImpl<AffineExpr> &affExprs);
+
+    LogicalResult
+    processSumReduction(clast_reduction *expr,
                         llvm::SmallVectorImpl<AffineExpr> &affExprs);
+    LogicalResult
+    processMinOrMaxReduction(clast_reduction *expr,
+                            llvm::SmallVectorImpl<AffineExpr> &affExprs);
 
-  void reset();
+    /// OpBuilder used to create AffineExpr.
+    OpBuilder b;
+    /// The MLIR context
+    MLIRContext *context;
+    /// The OslScop of the whole program.
+    OslScop *scop;
+    /// TODO: keep only one of them
+    OslSymbolTable *symTable;
+    SymbolTable *symbolTable;
+    ///
+    CloogOptions *options;
 
-  LogicalResult process(clast_name *expr,
-                        llvm::SmallVectorImpl<AffineExpr> &affExprs);
-  LogicalResult process(clast_term *expr,
-                        llvm::SmallVectorImpl<AffineExpr> &affExprs);
-  LogicalResult process(clast_binary *expr,
-                        llvm::SmallVectorImpl<AffineExpr> &affExprs);
-  LogicalResult process(clast_reduction *expr,
-                        llvm::SmallVectorImpl<AffineExpr> &affExprs);
+    llvm::StringMap<unsigned> symbolNames;
+    llvm::StringMap<unsigned> dimNames;
 
-  LogicalResult
-  processSumReduction(clast_reduction *expr,
-                      llvm::SmallVectorImpl<AffineExpr> &affExprs);
-  LogicalResult
-  processMinOrMaxReduction(clast_reduction *expr,
-                           llvm::SmallVectorImpl<AffineExpr> &affExprs);
+    llvm::DenseMap<Value, std::string> valueMap;
+  };
 
-  /// OpBuilder used to create AffineExpr.
-  OpBuilder b;
-  /// The MLIR context
-  MLIRContext *context;
-  /// The OslScop of the whole program.
-  OslScop *scop;
-  /// TODO: keep only one of them
-  OslSymbolTable *symTable;
-  SymbolTable *symbolTable;
-  ///
-  CloogOptions *options;
 
-  llvm::StringMap<unsigned> symbolNames;
-  llvm::StringMap<unsigned> dimNames;
-
-  llvm::DenseMap<Value, std::string> valueMap;
-};
 } // namespace
 
+
+
+
+
+
 void AffineExprBuilder::reset() {
+
   symbolNames.clear();
   dimNames.clear();
+
 }
 
-/// Get the int64_t representation of a cloog_int_t.
-static LogicalResult getI64(cloog_int_t num, int64_t *res) {
-  // TODO: is there a better way to work around this file-based interface?
-  // First, we read the cloog integer into a char buffer.
-  char buf[100]; // Should be sufficient for int64_t in string.
-  FILE *bufFile = fmemopen(reinterpret_cast<void *>(buf), 32, "w");
-  cloog_int_print(bufFile, num);
-  fclose(bufFile); // Should close the file or the buf won't be flushed.
 
-  // Then we parse the string as int64_t.
-  *res = strtoll(buf, NULL, 10);
 
-  // TODO: error handling.
-  return success();
-}
 
-LogicalResult
-AffineExprBuilder::process(clast_expr *expr,
-                           llvm::SmallVectorImpl<AffineExpr> &affExprs) {
+
+
+LogicalResult AffineExprBuilder::process(clast_expr *expr, llvm::SmallVectorImpl<AffineExpr> &affExprs) {
 
   switch (expr->type) {
   case clast_expr_name:
@@ -164,14 +170,17 @@ AffineExprBuilder::process(clast_expr *expr,
     break;
   }
   return success();
+
 }
+
+
+
 
 /// Find the name in the scop to determine the type (dim or symbol). The
 /// position is decided by the size of dimNames/symbolNames.
 /// TODO: handle the dim case.
-LogicalResult
-AffineExprBuilder::process(clast_name *expr,
-                           llvm::SmallVectorImpl<AffineExpr> &affExprs) {
+LogicalResult AffineExprBuilder::process(clast_name *expr, llvm::SmallVectorImpl<AffineExpr> &affExprs) {
+
   if (scop->isSymbol(expr->name)) {
     if (symbolNames.find(expr->name) != symbolNames.end())
       affExprs.push_back(b.getAffineSymbolExpr(symbolNames[expr->name]));
@@ -197,11 +206,34 @@ AffineExprBuilder::process(clast_name *expr,
   }
 
   return success();
+
 }
 
-LogicalResult
-AffineExprBuilder::process(clast_term *expr,
-                           llvm::SmallVectorImpl<AffineExpr> &affExprs) {
+
+
+
+/// Get the int64_t representation of a cloog_int_t.
+static LogicalResult getI64(cloog_int_t num, int64_t *res) {
+
+  // TODO: is there a better way to work around this file-based interface?
+  // First, we read the cloog integer into a char buffer.
+  char buf[100]; // Should be sufficient for int64_t in string.
+  FILE *bufFile = fmemopen(reinterpret_cast<void *>(buf), 32, "w");
+  cloog_int_print(bufFile, num);
+  fclose(bufFile); // Should close the file or the buf won't be flushed.
+
+  // Then we parse the string as int64_t.
+  *res = strtoll(buf, NULL, 10);
+
+  // TODO: error handling.
+  return success();
+
+}
+
+
+
+LogicalResult AffineExprBuilder::process(clast_term *expr, llvm::SmallVectorImpl<AffineExpr> &affExprs) {
+
   // First get the I64 representation of a cloog int.
   int64_t constant;
   if (failed(getI64(expr->val, &constant)))
@@ -227,9 +259,11 @@ AffineExprBuilder::process(clast_term *expr,
   return success();
 }
 
-LogicalResult
-AffineExprBuilder::process(clast_binary *expr,
-                           llvm::SmallVectorImpl<AffineExpr> &affExprs) {
+
+
+
+LogicalResult AffineExprBuilder::process(clast_binary *expr, llvm::SmallVectorImpl<AffineExpr> &affExprs) {
+
   // Handle the LHS expression.
   SmallVector<AffineExpr, 1> lhsAffExprs;
   if (failed(process(expr->LHS, lhsAffExprs)))
@@ -261,11 +295,14 @@ AffineExprBuilder::process(clast_binary *expr,
   affExprs.push_back(affExpr);
 
   return success();
+
 }
 
-LogicalResult
-AffineExprBuilder::process(clast_reduction *expr,
-                           llvm::SmallVectorImpl<AffineExpr> &affExprs) {
+
+
+
+LogicalResult AffineExprBuilder::process(clast_reduction *expr, llvm::SmallVectorImpl<AffineExpr> &affExprs) {
+
   if (expr->n == 1) {
     if (failed(process(expr->elts[0], affExprs)))
       return failure();
@@ -285,10 +322,14 @@ AffineExprBuilder::process(clast_reduction *expr,
   }
 
   return success();
+
 }
 
-LogicalResult AffineExprBuilder::processSumReduction(
-    clast_reduction *expr, llvm::SmallVectorImpl<AffineExpr> &affExprs) {
+
+
+
+LogicalResult AffineExprBuilder::processSumReduction(clast_reduction *expr, llvm::SmallVectorImpl<AffineExpr> &affExprs) {
+
   assert(expr->n >= 1 && "Number of reduction elements should be non-zero.");
   assert(expr->elts[0]->type == clast_expr_term &&
          "The first element should be a term.");
@@ -321,8 +362,11 @@ LogicalResult AffineExprBuilder::processSumReduction(
   return success();
 }
 
-LogicalResult AffineExprBuilder::processMinOrMaxReduction(
-    clast_reduction *expr, llvm::SmallVectorImpl<AffineExpr> &affExprs) {
+
+
+
+LogicalResult AffineExprBuilder::processMinOrMaxReduction(clast_reduction *expr, llvm::SmallVectorImpl<AffineExpr> &affExprs) {
+
   if (failed(process(expr->elts[0], affExprs)))
     return failure();
 
@@ -332,7 +376,16 @@ LogicalResult AffineExprBuilder::processMinOrMaxReduction(
   }
 
   return success();
+
 }
+
+
+
+
+
+
+
+
 /// Builds the mapping from the iterator names in a statement to their
 /// corresponding names in <scatnames>, based on the matrix provided by the
 /// scattering relation.
@@ -377,29 +430,39 @@ static void buildIterToScatNameMap(IterScatNameMap &iterToScatName,
         iterToScatName[iterNames[j]] = scatNames[i];
 }
 
+
+
+
+/// @brief : IterScatNameMapper class
 namespace {
 
-/// Build mapping between the iter names in the original code to the scatname in
-/// the OpenScop.
-class IterScatNameMapper {
-public:
-  IterScatNameMapper(OslScop *scop) : scop(scop) {}
+  /// Build mapping between the iter names in the original code to the scatname in
+  /// the OpenScop.
+  class IterScatNameMapper {
 
-  void visitStmtList(clast_stmt *s);
+  public:
 
-  IterScatNameMap getIterScatNameMap() { return iterScatNameMap; };
+    IterScatNameMapper(OslScop *scop) : scop(scop) {}
 
-private:
-  void visit(clast_for *forStmt);
-  void visit(clast_guard *guardStmt);
-  void visit(clast_user_stmt *userStmt);
+    void visitStmtList(clast_stmt *s);
 
-  OslScop *scop;
+    IterScatNameMap getIterScatNameMap() { return iterScatNameMap; };
 
-  IterScatNameMap iterScatNameMap;
-};
+  private:
+    void visit(clast_for *forStmt);
+    void visit(clast_guard *guardStmt);
+    void visit(clast_user_stmt *userStmt);
+
+    OslScop *scop;
+
+    IterScatNameMap iterScatNameMap;
+  
+  };
 
 } // namespace
+
+
+
 
 void IterScatNameMapper::visitStmtList(clast_stmt *s) {
   for (; s; s = s->next) {
@@ -413,12 +476,23 @@ void IterScatNameMapper::visitStmtList(clast_stmt *s) {
   }
 }
 
+
+
+
+
 void IterScatNameMapper::visit(clast_for *forStmt) {
   visitStmtList(forStmt->body);
 }
+
+
+
+
 void IterScatNameMapper::visit(clast_guard *guardStmt) {
   visitStmtList(guardStmt->then);
 }
+
+
+
 
 void IterScatNameMapper::visit(clast_user_stmt *userStmt) {
   osl_statement_p stmt;
@@ -436,6 +510,11 @@ void IterScatNameMapper::visit(clast_user_stmt *userStmt) {
   buildIterToScatNameMap(iterScatNameMap, stmt, scatnames);
 }
 
+
+
+
+
+/// @brief : Importer class
 namespace {
 
   /// Import MLIR code from the clast AST.
@@ -552,12 +631,17 @@ Importer::Importer(MLIRContext *context, ModuleOp module, OslSymbolTable *symTab
 
 }
 
+
+
 bool Importer::isMemrefArg(llvm::StringRef argName) {
 
   // TODO: should find a better way to do this, e.g., using the old symbol table.
   return argName.size() >= 2 && argName[0] == 'A';
 
 }
+
+
+
 
 
 LogicalResult Importer::parseUserStmtBody(llvm::StringRef body, std::string &calleeName, llvm::SmallVectorImpl<std::string> &args) {
@@ -596,6 +680,9 @@ LogicalResult Importer::parseUserStmtBody(llvm::StringRef body, std::string &cal
   return success();
 
 }
+
+
+
 
 void Importer::createCalleeAndCallerArgs(llvm::StringRef calleeName, llvm::ArrayRef<std::string> args,
                                          mlir::FuncOp &callee, SmallVectorImpl<mlir::Value> &callerArgs) {
@@ -722,6 +809,11 @@ void Importer::createCalleeAndCallerArgs(llvm::StringRef calleeName, llvm::Array
 
 }
 
+
+
+
+
+
 void Importer::getAffineExprForLoopIterator( clast_stmt *subst, llvm::SmallVectorImpl<mlir::Value> &operands, AffineMap &affMap) {
 
   assert(CLAST_STMT_IS_A(subst, stmt_ass) && "Should use clast assignment here.");
@@ -761,6 +853,11 @@ void Importer::getAffineExprForLoopIterator( clast_stmt *subst, llvm::SmallVecto
 
 
 }
+
+
+
+
+
 
 void Importer::getInductionVars(clast_user_stmt *userStmt, osl_body_p body, SmallVectorImpl<mlir::Value> &inductionVars) {
 
@@ -815,6 +912,11 @@ void Importer::getInductionVars(clast_user_stmt *userStmt, osl_body_p body, Smal
 
 }
 
+
+
+
+
+
 static mlir::Value findBlockArg(mlir::Value v) {
 
   mlir::Value r = v;
@@ -842,6 +944,9 @@ static mlir::Value findBlockArg(mlir::Value v) {
   return r;
 
 }
+
+
+
 
 
 /// We treat the provided the clast_expr as a loop bound. If it is a min/max
@@ -883,6 +988,11 @@ static LogicalResult processClastLoopBound(clast_expr *expr,
   return success();
 
 }
+
+
+
+
+
 
 LogicalResult Importer::getAffineLoopBound(clast_expr *expr,
                                            llvm::SmallVectorImpl<mlir::Value> &operands,
@@ -943,6 +1053,10 @@ LogicalResult Importer::getAffineLoopBound(clast_expr *expr,
   return success();
 
 }
+
+
+
+
 
 static std::unique_ptr<OslScop> readOpenScop(llvm::MemoryBufferRef buf) {
   
@@ -1099,6 +1213,11 @@ LogicalResult Importer::processStmt(clast_user_stmt *userStmt) {
 
 }
 
+
+
+
+
+
 /// Process the if statement.
 LogicalResult Importer::processStmt(clast_guard *guardStmt) {
 
@@ -1228,6 +1347,8 @@ LogicalResult Importer::processStmt(clast_guard *guardStmt) {
 
 
 
+
+
 /// F: Function to convert mlir::Type to std::string
 std::string typeToString(mlir::Type type) {
   
@@ -1277,6 +1398,9 @@ std::string operationToString(mlir::Operation* op) {
   return os.str();
 
 }
+
+
+
 
 
 /// @brief Its taking mlir value type from oslSymbolTable actually its symbolTable which is inside initializeSymbolTable()
@@ -1555,291 +1679,19 @@ void Importer::initializeSymbol(mlir::Value val, ordered_json &j) {
 }
 
 
-void Importer::initializeSymbolTable() {
 
-  OslScop::SymbolTable *oslSymbolTable = scop->getSymbolTable();
 
-  OpBuilder::InsertionGuard guard(b);
 
-  auto &entryBlock = *func.getBody().begin();
 
-  b.setInsertionPointToStart(&entryBlock);
 
-  /// Constants
-  symbolTable["zero"] = b.create<mlir::arith::ConstantOp>(b.getUnknownLoc(), b.getIndexType(), b.getIntegerAttr(b.getIndexType(), 0));
 
-  // Check that the symbol was added
-  if (symbolTable.find("zero") != symbolTable.end()) {
 
-    std::cout << "Symbol 'zero' was successfully added to the symbolTable." << std::endl;
-  
-  } else {
-    std::cerr << "Failed to add 'zero' to the symbolTable." << std::endl;
-  }
 
-  /// F:
-  ordered_json& initJson = j["initializeSymbolTable()"];
-  ordered_json& oslSymbolJson = initJson["*oslSymbolTable"];
-  
-  /// F: Iterate over the ValueTable
-  // Iterate over the OSL symbol table and populate the JSON object
-  for (const auto& entry : *oslSymbolTable) {
 
-    /// F: Insert into JSON object, using an array to store multiple values
-    oslSymbolJson[entry.first().str()].push_back(valueToString(entry.second));
-  
-  }
 
-  ordered_json &symbolTableJson1 = initJson["symbolTableInsideinitializeSymbolTable()"];
 
-  /// F: Print the final contents of the symbolTable
-  for (const auto& entry : symbolTable) {
 
-    /// F: Insert into JSON object, using an array to store multiple values
-    symbolTableJson1[entry.first().str()].push_back(valueToString(entry.second));
 
-  }
-
-  
-  for (const auto &it : *oslSymbolTable)
-
-    initializeSymbol(it.second, initJson["initializeSymbol()"]);
-
-
-  ordered_json &symbolTableJson2 = initJson["symbolTableAfterinitializeSymbol()call"];
-
-  /// F: Print the final contents of the symbolTable
-  for (const auto& entry : symbolTable) {
-
-    /// F: Insert into JSON object, using an array to store multiple values
-    symbolTableJson2[entry.first().str()].push_back(valueToString(entry.second));
-
-  }
-
-
-
-  // F: Open an ofstream to write to the file "data.json"
-  std::ofstream o("data.json");
-  
-  /// F:
-  if (!o.is_open()) {
-      
-      /// F:
-      std::cerr << "Failed to open file for writing.\n";
-    
-  }
-
-  /// F: Write formatted JSON data to the file
-  o << j.dump(4); // The argument '4' makes the JSON output pretty-printed with an indentation of 4 spaces
-
-  /// F: Close the file stream
-  o.close();
-
-
-
-
-
-}
-
-
-
-/// If there is anything in the comment, we will use it as a function name.
-/// Otherwise, we return an empty string.
-std::string Importer::getSourceFuncName(ordered_json &j) const {
-
-  osl_generic_p comment = scop->getExtension("comment");
-
-  /// F:
-  FILE *scop_getextension_getSourceFuncName = fopen("scop_getextension_getSourceFuncName.txt", "w");
-  osl_generic_idump(scop_getextension_getSourceFuncName, comment, 4);
-  /// end of my snippet
-
-  if (comment) {
-
-    char *commentStr = reinterpret_cast<osl_comment_p>(comment->data)->comment;
-
-    /// F:
-    j["commentStr"] = commentStr;
-
-    return std::string(commentStr);
-
-  }
-
-
-  /// F: Open an ofstream to write to the file "data.json"
-  std::ofstream o("data.json");
-  
-  /// F:
-  if (!o.is_open()) {
-      
-      /// F:
-      std::cerr << "Failed to open file for writing.\n";
-    
-  }
-
-  /// F: Write formatted JSON data to the file
-  o << j.dump(4); // The argument '4' makes the JSON output pretty-printed with an indentation of 4 spaces
-
-  /// F: Close the file stream
-  o.close();
-
-  return std::string("");
-
-}
-
-
-
-mlir::FuncOp Importer::getSourceFuncOp(ordered_json &j) {
-
-  std::string sourceFuncName = getSourceFuncName(j["getSourceFuncName()"]);
-  
-  mlir::Operation *sourceFuncOp = module.lookupSymbol(sourceFuncName);
-
-  
-  /// F: Convert operation to string and store in JSON
-  j["sourceFuncOp"] = operationToString(sourceFuncOp);
-
-  /// F: Open an ofstream to write to the file "data.json"
-  std::ofstream o("data.json");
-  
-  /// F:
-  if (!o.is_open()) {
-      
-      /// F:
-      std::cerr << "Failed to open file for writing.\n";
-    
-  }
-
-  /// F: Write formatted JSON data to the file
-  o << j.dump(4); // The argument '4' makes the JSON output pretty-printed with an indentation of 4 spaces
-
-  /// F: Close the file stream
-  o.close();
-  
-
-  assert(sourceFuncOp != nullptr && "sourceFuncName cannot be found in the module");
-  
-  assert(isa<mlir::FuncOp>(sourceFuncOp) && "Found sourceFuncOp should be of type mlir::FuncOp.");
-
-  return cast<mlir::FuncOp>(sourceFuncOp);
-
-}
-
-
-
-/// Initialize FuncOpInterface
-void Importer::initializeFuncOpInterface() {
-
-  /// Retrieve mapping of mlir value to symbolic names out of valueTable
-  /// And this method getValueTable() is written under OslScop class in this format 
-  /// `using ValueTable = llvm::DenseMap<mlir::Value, std::string>;` here ValueTable is acting as alias 
-  /// for the type `llvm::DenseMap<mlir::Value, std::string>`
-  OslScop::ValueTable *oslValueTable = scop->getValueTable();
-  
-
-  
-  /// F: Populate the oslValueTable section first
-  ordered_json& initJson = j["initializeFuncOpInterface()"];
-  /// F:
-  ordered_json& oslValueJson = initJson["oslValueTable"];
-
-  /// F: Iterate over the ValueTable
-  for (const auto& entry : *oslValueTable) {
-    mlir::Value key = entry.first;
-    std::string value = entry.second;
-
-    std::string keyStr = valueToString(key);
-
-    /// std::cout << "Key: " << keyStr << ", Value: " << value << std::endl;
-
-    /// Insert into JSON object, using an array to store multiple values
-    oslValueJson[keyStr].push_back(value);
-  }
-
-  /// F: Call getSourceFuncOp() and pass the JSON object by reference
-  mlir::FuncOp sourceFuncOp = getSourceFuncOp(initJson["getSourceFuncOp()"]);
-
-  /// OpBuilder::InsertionGuard guard(b);
-  b.setInsertionPoint(module.getBody(), getFuncInsertPt());
-
-  /// The default function name is main.
-  std::string funcName("main");
-
-  /// F: If the comment is provided, we will use it as the function name.
-  std::string sourceFuncName = getSourceFuncName(initJson["getSourceFuncName()"]);
-
-  if (!sourceFuncName.empty()) {
-    funcName = std::string(formatv("{0}_opt", sourceFuncName));
-  }
-
-  /// Create the function interface.
-  func = b.create<FuncOp>(sourceFuncOp.getLoc(), funcName, sourceFuncOp.getType());
-
-  /// F: Add remaining fields in the desired order
-  initJson["funcName"] = funcName;
-  initJson["sourceFuncOp location"] = locationToString(sourceFuncOp.getLoc());
-  initJson["sourceFuncOp func return type"] = typeToString(sourceFuncOp.getType());
-
-  /// Initialize the symbol table for these entryBlock arguments
-  auto& entryBlock = *func.addEntryBlock();
-
-  b.setInsertionPointToStart(&entryBlock);
-  b.create<mlir::func::ReturnOp>(UnknownLoc::get(context));
-  b.setInsertionPointToStart(&entryBlock);
-
-
-  /// F:
-  ordered_json& argsJson = initJson["arguments"];
-
-
-  /// This part handles block arguments or function parameters
-  for (unsigned i = 0; i < entryBlock.getNumArguments(); i++) {
-    
-    std::string argSymbol = oslValueTable->lookup(sourceFuncOp.getArgument(i));
-    mlir::Value arg = entryBlock.getArgument(i);
-
-    /// F: Use a unique key for each argument
-    argsJson[i]["argSymbol"] = argSymbol;
-    argsJson[i]["arg"] = valueToString(arg);
-
-    /// If the source type is not index, cast it to index then.
-    if (scop->isParameterSymbol(argSymbol) && arg.getType() != b.getIndexType()) {
-      
-      mlir::Operation* op = b.create<mlir::arith::IndexCastOp>(sourceFuncOp.getLoc(), b.getIndexType(), arg);
-      symbolTable[argSymbol] = op->getResult(0);
-    
-    } else {
-    
-      symbolTable[argSymbol] = arg;
-    
-    }
-  
-  }
-
-  
-  /// F: Open an ofstream to write to the file "data.json"
-  std::ofstream o("data.json");
-
-  /// F: 
-  if (!o.is_open()) {
-  
-    std::cerr << "Failed to open file for writing.\n";
-  
-  /// F: 
-  } else {
-    
-    // Write formatted JSON data to the file
-    o << j.dump(4); // The argument '4' makes the JSON output pretty-printed with an indentation of 4 spaces
-    
-    // Close the file stream
-    o.close();
-    
-    // Output success message
-    std::cout << "Data has been dumped to data.json successfully.\n";
-  
-  }
-
-}
 
 
 
@@ -1926,7 +1778,7 @@ LogicalResult Importer::processStmt(clast_for *forStmt) {
 
   assert(!(forStmt->UB->type == clast_expr_red &&
            reinterpret_cast<clast_reduction *>(forStmt->UB)->type == clast_red_max) &&
-         "If the lower bound is a reduced result, it should not use max for reduction.");
+         "If the upper bound is a reduced result, it should not use max for reduction.");
 
 
   if (failed(getAffineLoopBound(forStmt->LB, lbOperands, lbMap)) ||
@@ -2072,6 +1924,301 @@ LogicalResult Importer::processStmt(clast_for *forStmt) {
 }
 
 
+void Importer::initializeSymbolTable() {
+
+  OslScop::SymbolTable *oslSymbolTable = scop->getSymbolTable();
+
+  OpBuilder::InsertionGuard guard(b);
+
+  auto &entryBlock = *func.getBody().begin();
+
+  b.setInsertionPointToStart(&entryBlock);
+
+  /// Constants
+  symbolTable["zero"] = b.create<mlir::arith::ConstantOp>(b.getUnknownLoc(), b.getIndexType(), b.getIntegerAttr(b.getIndexType(), 0));
+
+  // Check that the symbol was added
+  if (symbolTable.find("zero") != symbolTable.end()) {
+
+    std::cout << "Symbol 'zero' was successfully added to the symbolTable." << std::endl;
+  
+  } else {
+    std::cerr << "Failed to add 'zero' to the symbolTable." << std::endl;
+  }
+
+  /// F:
+  ordered_json& initJson = j["initializeSymbolTable()"];
+  ordered_json& oslSymbolJson = initJson["*oslSymbolTable"];
+  
+  /// F: Iterate over the ValueTable
+  // Iterate over the OSL symbol table and populate the JSON object
+  for (const auto& entry : *oslSymbolTable) {
+
+    /// F: Insert into JSON object, using an array to store multiple values
+    oslSymbolJson[entry.first().str()].push_back(valueToString(entry.second));
+  
+  }
+
+  ordered_json &symbolTableJson1 = initJson["symbolTableInsideinitializeSymbolTable()"];
+
+  /// F: Print the final contents of the symbolTable
+  for (const auto& entry : symbolTable) {
+
+    /// F: Insert into JSON object, using an array to store multiple values
+    symbolTableJson1[entry.first().str()].push_back(valueToString(entry.second));
+
+  }
+
+  
+  for (const auto &it : *oslSymbolTable)
+
+    initializeSymbol(it.second, initJson["initializeSymbol()"]);
+
+
+  ordered_json &symbolTableJson2 = initJson["symbolTableAfterinitializeSymbol()call"];
+
+  /// F: Print the final contents of the symbolTable
+  for (const auto& entry : symbolTable) {
+
+    /// F: Insert into JSON object, using an array to store multiple values
+    symbolTableJson2[entry.first().str()].push_back(valueToString(entry.second));
+
+  }
+
+
+
+  // F: Open an ofstream to write to the file "data.json"
+  std::ofstream o("data.json");
+  
+  /// F:
+  if (!o.is_open()) {
+      
+      /// F:
+      std::cerr << "Failed to open file for writing.\n";
+    
+  }
+
+  /// F: Write formatted JSON data to the file
+  o << j.dump(4); // The argument '4' makes the JSON output pretty-printed with an indentation of 4 spaces
+
+  /// F: Close the file stream
+  o.close();
+
+
+
+
+
+}
+
+
+
+
+
+
+/// If there is anything in the comment, we will use it as a function name.
+/// Otherwise, we return an empty string.
+std::string Importer::getSourceFuncName(ordered_json &j) const {
+
+  osl_generic_p comment = scop->getExtension("comment");
+
+  /// F:
+  FILE *scop_getextension_getSourceFuncName = fopen("scop_getextension_getSourceFuncName.txt", "w");
+  osl_generic_idump(scop_getextension_getSourceFuncName, comment, 4);
+  /// end of my snippet
+
+  if (comment) {
+
+    char *commentStr = reinterpret_cast<osl_comment_p>(comment->data)->comment;
+
+    /// F:
+    j["commentStr"] = commentStr;
+
+    return std::string(commentStr);
+
+  }
+
+
+  /// F: Open an ofstream to write to the file "data.json"
+  std::ofstream o("data.json");
+  
+  /// F:
+  if (!o.is_open()) {
+      
+      /// F:
+      std::cerr << "Failed to open file for writing.\n";
+    
+  }
+
+  /// F: Write formatted JSON data to the file
+  o << j.dump(4); // The argument '4' makes the JSON output pretty-printed with an indentation of 4 spaces
+
+  /// F: Close the file stream
+  o.close();
+
+  return std::string("");
+
+}
+
+
+
+
+mlir::FuncOp Importer::getSourceFuncOp(ordered_json &j) {
+
+  std::string sourceFuncName = getSourceFuncName(j["getSourceFuncName()"]);
+  
+  mlir::Operation *sourceFuncOp = module.lookupSymbol(sourceFuncName);
+
+  
+  /// F: Convert operation to string and store in JSON
+  j["sourceFuncOp"] = operationToString(sourceFuncOp);
+
+  /// F: Open an ofstream to write to the file "data.json"
+  std::ofstream o("data.json");
+  
+  /// F:
+  if (!o.is_open()) {
+      
+      /// F:
+      std::cerr << "Failed to open file for writing.\n";
+    
+  }
+
+  /// F: Write formatted JSON data to the file
+  o << j.dump(4); // The argument '4' makes the JSON output pretty-printed with an indentation of 4 spaces
+
+  /// F: Close the file stream
+  o.close();
+  
+
+  assert(sourceFuncOp != nullptr && "sourceFuncName cannot be found in the module");
+  
+  assert(isa<mlir::FuncOp>(sourceFuncOp) && "Found sourceFuncOp should be of type mlir::FuncOp.");
+
+  return cast<mlir::FuncOp>(sourceFuncOp);
+
+}
+
+
+
+
+
+
+/// Initialize FuncOpInterface
+void Importer::initializeFuncOpInterface() {
+
+  /// Retrieve mapping of mlir value to symbolic names out of valueTable
+  /// And this method getValueTable() is written under OslScop class in this format 
+  /// `using ValueTable = llvm::DenseMap<mlir::Value, std::string>;` here ValueTable is acting as alias 
+  /// for the type `llvm::DenseMap<mlir::Value, std::string>`
+  OslScop::ValueTable *oslValueTable = scop->getValueTable();
+  
+
+  
+  /// F: Populate the oslValueTable section first
+  ordered_json& initJson = j["initializeFuncOpInterface()"];
+  /// F:
+  ordered_json& oslValueJson = initJson["oslValueTable"];
+
+  /// F: Iterate over the ValueTable
+  for (const auto& entry : *oslValueTable) {
+    mlir::Value key = entry.first;
+    std::string value = entry.second;
+
+    std::string keyStr = valueToString(key);
+
+    /// std::cout << "Key: " << keyStr << ", Value: " << value << std::endl;
+
+    /// Insert into JSON object, using an array to store multiple values
+    oslValueJson[keyStr].push_back(value);
+  }
+
+  /// F: Call getSourceFuncOp() and pass the JSON object by reference
+  mlir::FuncOp sourceFuncOp = getSourceFuncOp(initJson["getSourceFuncOp()"]);
+
+  /// OpBuilder::InsertionGuard guard(b);
+  b.setInsertionPoint(module.getBody(), getFuncInsertPt());
+
+  /// The default function name is main.
+  std::string funcName("main");
+
+  /// F: If the comment is provided, we will use it as the function name.
+  std::string sourceFuncName = getSourceFuncName(initJson["getSourceFuncName()"]);
+
+  if (!sourceFuncName.empty()) {
+    funcName = std::string(formatv("{0}_opt", sourceFuncName));
+  }
+
+  /// Create the function interface.
+  func = b.create<FuncOp>(sourceFuncOp.getLoc(), funcName, sourceFuncOp.getType());
+
+  /// F: Add remaining fields in the desired order
+  initJson["funcName"] = funcName;
+  initJson["sourceFuncOp location"] = locationToString(sourceFuncOp.getLoc());
+  initJson["sourceFuncOp func return type"] = typeToString(sourceFuncOp.getType());
+
+  /// Initialize the symbol table for these entryBlock arguments
+  auto& entryBlock = *func.addEntryBlock();
+
+  b.setInsertionPointToStart(&entryBlock);
+  b.create<mlir::func::ReturnOp>(UnknownLoc::get(context));
+  b.setInsertionPointToStart(&entryBlock);
+
+
+  /// F:
+  ordered_json& argsJson = initJson["arguments"];
+
+
+  /// This part handles block arguments or function parameters
+  for (unsigned i = 0; i < entryBlock.getNumArguments(); i++) {
+    
+    std::string argSymbol = oslValueTable->lookup(sourceFuncOp.getArgument(i));
+    mlir::Value arg = entryBlock.getArgument(i);
+
+    /// F: Use a unique key for each argument
+    argsJson[i]["argSymbol"] = argSymbol;
+    argsJson[i]["arg"] = valueToString(arg);
+
+    /// If the source type is not index, cast it to index then.
+    if (scop->isParameterSymbol(argSymbol) && arg.getType() != b.getIndexType()) {
+      
+      mlir::Operation* op = b.create<mlir::arith::IndexCastOp>(sourceFuncOp.getLoc(), b.getIndexType(), arg);
+      symbolTable[argSymbol] = op->getResult(0);
+    
+    } else {
+    
+      symbolTable[argSymbol] = arg;
+    
+    }
+  
+  }
+
+  
+  /// F: Open an ofstream to write to the file "data.json"
+  std::ofstream o("data.json");
+
+  /// F: 
+  if (!o.is_open()) {
+  
+    std::cerr << "Failed to open file for writing.\n";
+  
+  /// F: 
+  } else {
+    
+    // Write formatted JSON data to the file
+    o << j.dump(4); // The argument '4' makes the JSON output pretty-printed with an indentation of 4 spaces
+    
+    // Close the file stream
+    o.close();
+    
+    // Output success message
+    std::cout << "Data has been dumped to data.json successfully.\n";
+  
+  }
+
+}
+
+
+
 
 
 
@@ -2096,14 +2243,17 @@ LogicalResult Importer::processStmt(clast_root *rootStmt) {
 
 LogicalResult Importer::processStmtList(clast_stmt *s) {
 
-  FILE *rootStmt = fopen("rootStmt.txt", "w");
+  FILE *rootStmt_dump = fopen("output-files/rootStmt.txt", "w");
 
   // Loop through each statement in the linked list until the end (NULL)
   for (; s; s = s->next) {
     
+
+
     // Check if the current statement is of type 'stmt_root'
     if (CLAST_STMT_IS_A(s, stmt_root)) {
       
+      clast_pprint(rootStmt_dump, s, 0, options);
       
       // Process the statement and check for failure
       if (failed(processStmt(reinterpret_cast<clast_root *>(s))))
@@ -2113,24 +2263,38 @@ LogicalResult Importer::processStmtList(clast_stmt *s) {
 
 
 
+
+
     } else if (CLAST_STMT_IS_A(s, stmt_for)) {
       
-      // Same process for a 'stmt_for' (a for loop statement)
-      if (failed(processStmt(reinterpret_cast<clast_for *>(s))))
-  
-        return failure();
+      
+        clast_pprint(rootStmt_dump, s, 0, options);
+
+        // Same process for a 'stmt_for' (a for loop statement)
+        if (failed(processStmt(reinterpret_cast<clast_for *>(s))))
+    
+          return failure();
+
+
 
 
     } else if (CLAST_STMT_IS_A(s, stmt_ass)) {
 
-      // Same process for a statement of type 'stmt_ass' (an assignment statement)
-      if (failed(processStmt(reinterpret_cast<clast_assignment *>(s))))
+      
+        // Same process for a statement of type 'stmt_ass' (an assignment statement)
+        if (failed(processStmt(reinterpret_cast<clast_assignment *>(s))))
 
-        // Return a failure result if processing failed
-        return failure();
-    
+          // Return a failure result if processing failed
+          return failure();
+
+
+
     
     } else if (CLAST_STMT_IS_A(s, stmt_user)) {
+
+
+      clast_pprint(rootStmt_dump, s, 0, options);
+
       
       // Same process for a statement of type 'stmt_user'
       if (failed(processStmt(reinterpret_cast<clast_user_stmt *>(s))))
@@ -2138,13 +2302,19 @@ LogicalResult Importer::processStmtList(clast_stmt *s) {
         return failure();
   
 
+
+
+
     } else if (CLAST_STMT_IS_A(s, stmt_guard)) {
       
       // Same process for a 'stmt_guard' (a conditional guard statement)
       if (failed(processStmt(reinterpret_cast<clast_guard *>(s))))
   
         return failure();
-  
+
+
+
+
     } else {
 
       // If the statement is not recognized, assert failure (crash)
@@ -2154,7 +2324,7 @@ LogicalResult Importer::processStmtList(clast_stmt *s) {
   
   } // for ends here
 
-  fclose(rootStmt);
+  fclose(rootStmt_dump);
 
   // If all statements were processed successfully, return a success result
   return success();
@@ -2232,11 +2402,16 @@ static void unrollJamClastByPlutoProg(clast_stmt *root,
 
 }
 
+
+
+
 static void markParallel(clast_stmt *root, const PlutoProg *prog, CloogOptions *cloogOptions) {
   
   pluto_mark_parallel(root, prog, cloogOptions);
 
 }
+
+
 
 
 
@@ -2315,12 +2490,23 @@ static void updateCloogOptionsByPlutoProg(CloogOptions *options, const PlutoProg
 mlir::Operation *polymer::createFuncOpFromOpenScop(std::unique_ptr<OslScop> scop, ModuleOp module, OslSymbolTable &symTable,
                                                   MLIRContext *context, PlutoProg *prog, const char *dumpClastAfterPluto) {
   
-  
+  /// F:
   FILE *cloogOutFromScop = fopen("cloog_from_scop.cloog", "w");
   FILE *cloogProgram = fopen("program_from_cloog.txt", "w");
   FILE *clastPrintFile = fopen("clast_from_program.txt", "w");
-  // FILE *scop_file = fopen("scop_file.txt", "w");
-  // FILE *options1 = fopen("options.txt", "w");
+
+
+
+  /// Inputs printing to console
+  /// scop printing
+  std::printf("Printing scop from createFuncOpFromOpenScop()\n");
+  scop->print();
+
+  // /// modoule printing
+  // std::printf("Printing mlir::moduleOp from createFuncOpFromOpenScop()");
+  // // LLVM_DEBUG(module.dump());
+
+
 
 
   // TODO: turn these C struct into C++ classes.
@@ -2340,7 +2526,7 @@ mlir::Operation *polymer::createFuncOpFromOpenScop(std::unique_ptr<OslScop> scop
 
   /// This function extracts CLooG option values from an OpenScop scop and
   /// updates an existing CloogOption structure with those values. If the
-  /// options were already set, they are updated without warning.
+  /// options were already set, they are updated without warning. -- function Def path: ./pluto/cloog-isl/source/options.c
   cloog_options_copy_from_osl_scop(scop->get(), options);
   
   
@@ -2351,10 +2537,19 @@ mlir::Operation *polymer::createFuncOpFromOpenScop(std::unique_ptr<OslScop> scop
   
   
   
-  if (prog != nullptr)
+  if (prog != nullptr) {
     
-
+    /// F: Snitch
+    std::printf("=======================prog is not null=====================\n");
+    
+    
+    /// This is function from polymer defined in this script somewhere top
     updateCloogOptionsByPlutoProg(options, prog);
+  
+  
+  }
+
+
 
 
 
@@ -2373,7 +2568,9 @@ mlir::Operation *polymer::createFuncOpFromOpenScop(std::unique_ptr<OslScop> scop
   cloog_program_print(cloogProgram, program);
 
   
-  
+
+
+
   
   if (!program->loop) {
   
@@ -2401,8 +2598,15 @@ mlir::Operation *polymer::createFuncOpFromOpenScop(std::unique_ptr<OslScop> scop
 
 
 
+
+
+
+
   FILE *clastPrintFile_1 = stderr;
   if (dumpClastAfterPluto) {
+
+    /// F: Snitch
+    std::printf("===========================dumpClastAfterPluto is not empty!!!===========================\n");
   
     clastPrintFile_1 = fopen(dumpClastAfterPluto, "w");
 
@@ -2416,16 +2620,30 @@ mlir::Operation *polymer::createFuncOpFromOpenScop(std::unique_ptr<OslScop> scop
 
 
 
+
+
+
+
   // +++++++++++++++++Print clast+++++++++++++++++++++++++++
   clast_pprint(clastPrintFile, rootStmt, 0, options);
 
 
 
-  // Process the input.
+
+
+
+
+  /// Pass inputs to the Importer class. deseralizer is the instance of Importer class
+  /// Deserialising also non as converting
   Importer deserializer(context, module, &symTable, scop.get(), options);
   
   if (failed(deserializer.processStmtList(rootStmt)))
     return nullptr;
+
+
+
+
+
 
   // Cannot use cloog_input_free, some pointers don't exist.
   free(input);
@@ -2445,6 +2663,10 @@ mlir::Operation *polymer::createFuncOpFromOpenScop(std::unique_ptr<OslScop> scop
   return deserializer.getFunc();
 
 }
+
+
+
+
 
 
 /**
