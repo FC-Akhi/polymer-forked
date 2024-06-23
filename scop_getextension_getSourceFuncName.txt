@@ -1,0 +1,18 @@
+|	|	|	|	+-- osl_generic_t
+|	|	|	|	|	|	
+|	|	|	|	|	+-- osl_interface_t: URI = comment
+|	|	|	|	|	|	
+|	|	|	|	|	+-- osl_comment_t
+|	|	|	|	|	|	comment: matmul
+|	|	|	|	|	|	
+|	|	|	|	|	V
+|	|	|	|	|   osl_generic_t
+|	|	|	|	|	|	
+|	|	|	|	|	+-- osl_interface_t: URI = scatnames
+|	|	|	|	|	|	
+|	|	|	|	|	+-- osl_scatnames_t
+|	|	|	|	|	|	|	
+|	|	|	|	|	|	+-- osl_strings_t: t1 t2 t3 t4 t5 t6
+|	|	|	|	|	|	|	
+|	|	|	|	|	|	
+|	|	|	|	|	

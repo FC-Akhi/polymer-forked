@@ -174,23 +174,34 @@ static LogicalResult getI64(cloog_int_t num, int64_t *res) {
 LogicalResult AffineExprBuilder::process(clast_expr *expr, llvm::SmallVectorImpl<AffineExpr> &affExprs) {
 
   switch (expr->type) {
+
   case clast_expr_name:
     if (failed(process(reinterpret_cast<clast_name *>(expr), affExprs)))
       return failure();
     break;
+  
+  
   case clast_expr_term:
     if (failed(process(reinterpret_cast<clast_term *>(expr), affExprs)))
       return failure();
     break;
+  
+  
   case clast_expr_bin:
     if (failed(process(reinterpret_cast<clast_binary *>(expr), affExprs)))
       return failure();
     break;
+  
+  
   case clast_expr_red:
     if (failed(process(reinterpret_cast<clast_reduction *>(expr), affExprs)))
       return failure();
     break;
+  
+  
   }
+  
+  
   return success();
 
 }
@@ -238,24 +249,50 @@ LogicalResult AffineExprBuilder::process(clast_term *expr, llvm::SmallVectorImpl
   
   // First get the I64 representation of a cloog int.
   int64_t constant;
+
+
+  /// This extracts the 64-bit integer value from the clast_term's val field using the getI64 function. 
+  /// If this extraction fails, the function returns a failure.
   if (failed(getI64(expr->val, &constant)))
     return failure();
 
-  // Next create a constant AffineExpr.
+
+
+  /// Next create a constant AffineExpr.
+  /// This creates a constant affine expression using the extracted 64-bit integer value. 
+  /// The getAffineConstantExpr method of the OpBuilder (b) is used to create this constant expression.
   AffineExpr affExpr = b.getAffineConstantExpr(constant);
 
-  // If var is not NULL, it means this term is var * val. We should create the
-  // expr that denotes var and multiplies it with the AffineExpr for val.
-  if (expr->var) {
-    SmallVector<AffineExpr, 1> varAffExprs;
-    if (failed(process(expr->var, varAffExprs)))
-      return failure();
-    assert(varAffExprs.size() == 1 &&
-           "There should be a single expression that stands for the var expr.");
 
+  /// This checks if the clast_term has a variable part (var). 
+  /// If var is not NULL, it means this term is of the form var * val. We should create the
+  /// expr that denotes var and multiplies it with the AffineExpr for val.
+  if (expr->var) {
+
+    /// A new SmallVector of AffineExpr is created to hold the affine expressions corresponding to the variable part.
+    SmallVector<AffineExpr, 1> varAffExprs;
+
+
+    /// The process function is called recursively to process the variable part of the term. 
+    /// If this processing fails, the function returns a failure.
+    /// The process function should produce exactly one AffineExpr for the variable part.
+    if (failed(process(expr->var, varAffExprs)))
+
+      return failure();
+
+
+    /// An assertion checks that the process call for the variable part produced exactly one AffineExpr.
+    assert(varAffExprs.size() == 1 && "There should be a single expression that stands for the var expr.");
+
+
+    /// The constant affine expression (affExpr) is then multiplied by the affine expression for the variable part (varAffExprs[0]).
     affExpr = affExpr * varAffExprs[0];
+  
   }
 
+
+  /// The resulting affine expression, which may now represent var * val or just val 
+  /// if there was no variable part, is added to the affExprs vector.
   affExprs.push_back(affExpr);
 
   return success();
@@ -731,13 +768,31 @@ static mlir::Value findBlockArg(mlir::Value v) {
 }
 
 
+/// @brief Snitch to convert clast_expr to string
+/// @param expr 
+/// @return 
+std::string clast_expr_to_string(clast_expr *expr) {
+    // Implementation depends on the structure of clast_expr
+    // This is a simple placeholder
+    if (!expr) return "null";
+    // For example purposes, let's just return the address
+    return "clast_expr at " + std::to_string(reinterpret_cast<uintptr_t>(expr));
+}
+
+
 
 /// We treat the provided the clast_expr as a loop bound. If it is a min/max
 /// reduction, we will expand that into multiple expressions.
 static LogicalResult processClastLoopBound(clast_expr *expr,
                                            AffineExprBuilder &builder,
-                                           SmallVectorImpl<AffineExpr> &exprs) {
+                                           SmallVectorImpl<AffineExpr> &exprs,
+                                           CloogOptions *options) {
 
+
+  FILE *expandedExprs_dump = fopen("output-files/processClastLoopBound.txt", "a");
+  
+
+  
   SmallVector<clast_expr *, 1> expandedExprs;
 
   if (expr->type == clast_expr_red) {
@@ -761,14 +816,30 @@ static LogicalResult processClastLoopBound(clast_expr *expr,
   
     expandedExprs.push_back(expr);
 
+
+
   
-  for (clast_expr *e : expandedExprs)
-  
+  for (clast_expr *e : expandedExprs) {
+
+    /// F: Snitch to dump expandedExprs vector to file
+    fprintf(expandedExprs_dump, "\n");
+    clast_pprint_expr(options, expandedExprs_dump, e);
+
+
+
     if (failed(builder.process(e, exprs)))
   
       return failure();
 
+  }
+
+
+
+  fclose(expandedExprs_dump);
+
   return success();
+
+
 
 }
 
@@ -1216,15 +1287,24 @@ LogicalResult Importer::getAffineLoopBound(clast_expr *expr,
                                            llvm::SmallVectorImpl<mlir::Value> &operands,
                                            AffineMap &affMap, bool isUpper) {
 
+
+
+  /// An AffineExprBuilder instance is created to help build affine expressions.
   AffineExprBuilder builder(context, symTable, &symbolTable, scop, options);
 
+  /// A vector boundExprs is initialized to store the resulting affine expressions.
   SmallVector<AffineExpr, 4> boundExprs;
 
-  if (failed(processClastLoopBound(expr, builder, boundExprs)))
+  
+
+  /// The processClastLoopBound function is called to process the clast expression and convert it into one or more affine expressions.
+  if (failed(processClastLoopBound(expr, builder, boundExprs, options)))
   
     return failure();
 
-  // If looking at the upper bound, we should add 1 to all of them.
+
+
+  /// If looking at the upper bound, we should add 1 to all of them.
   if (isUpper)
   
     for (auto &expr : boundExprs)
@@ -2049,17 +2129,19 @@ LogicalResult Importer::processStmt(clast_assignment *ass) {
 LogicalResult Importer::processStmt(clast_for *forStmt) {
 
 
-  FILE *clast_for_output = fopen("clast_for.txt", "w");
+  FILE *clast_for_output = fopen("output-files/clast_for.txt", "a");
 
-  printf("inside forstmt\n");
+  fprintf(clast_for_output, "\nclast for the for stmt upper bound is dumping\n");
+      
+  clast_pprint_expr(options, clast_for_output, forStmt->UB);
 
-  // printClastFor(forStmt);
+  fprintf(clast_for_output, "\nclast for the for stmt lower bound is dumping\n");
 
-
-  // pprint_for(options, clast_for_output, 1, forStmt);
+  clast_pprint_expr(options, clast_for_output, forStmt->LB);
+  
   
   /// Get loop bounds.
-  ///  Declares variables to hold the affine maps for the lower bound (lbMap) and upper bound (ubMap) of the loop.
+  /// Declares variables of type affine maps for the lower bound (lbMap) and upper bound (ubMap) of the loop.
   AffineMap lbMap, ubMap;
 
 
@@ -2234,8 +2316,12 @@ LogicalResult Importer::processStmt(clast_for *forStmt) {
   // Set the insertion point right before the terminator.
   b.setInsertionPoint(&*std::prev(prevBlock->end()));
 
-  return success();
 
+  fclose(clast_for_output);
+
+
+
+  return success();
 
 
 }
@@ -2265,7 +2351,15 @@ LogicalResult Importer::processStmt(clast_root *rootStmt) {
 
 LogicalResult Importer::processStmtList(clast_stmt *s) {
 
-  FILE *rootStmt = fopen("rootStmt.txt", "w");
+  FILE *rootStmt_dump = fopen("output-files/rootStmt.txt", "a");
+
+  // Check if the file is opened successfully
+  if (!rootStmt_dump) {
+
+    std::cerr << "Failed to open file for writing.\n";
+    return failure();
+  
+  }
 
   // Loop through each statement in the linked list until the end (NULL)
   for (; s; s = s->next) {
@@ -2283,6 +2377,12 @@ LogicalResult Importer::processStmtList(clast_stmt *s) {
 
 
     } else if (CLAST_STMT_IS_A(s, stmt_for)) {
+
+
+      fprintf(rootStmt_dump, "clast for the for stmt is dumping\n");
+      
+      clast_pprint(rootStmt_dump, s, 0, options);
+      
 
       // Same process for a 'stmt_for' (a for loop statement)
       if (failed(processStmt(reinterpret_cast<clast_for *>(s))))
@@ -2323,7 +2423,7 @@ LogicalResult Importer::processStmtList(clast_stmt *s) {
   
   } // for ends here
 
-  fclose(rootStmt);
+  fclose(rootStmt_dump);
 
   // If all statements were processed successfully, return a success result
   return success();
@@ -2351,9 +2451,9 @@ mlir::Operation *polymer::createFuncOpFromOpenScop(std::unique_ptr<OslScop> scop
   std::cout << "create Func OP.\n" << std::endl;
 
 
-  FILE *cloogOutFromScop = fopen("cloog_from_scop.cloog", "w");
-  FILE *cloogProgram = fopen("program_from_cloog.txt", "w");
-  FILE *clastPrintFile = fopen("clast_from_program.txt", "w");
+  FILE *CloogOut = fopen("output-files/1. scop_to_cloog.cloog", "w");
+  FILE *ProgramOut = fopen("output-files/2. cloog_to_program.txt", "w");
+  FILE *ClastOut = fopen("output-files/3. program_to_clast.txt", "w");
   // FILE *scop_file = fopen("scop_file.txt", "w");
   // FILE *options1 = fopen("options.txt", "w");
 
@@ -2373,7 +2473,7 @@ mlir::Operation *polymer::createFuncOpFromOpenScop(std::unique_ptr<OslScop> scop
   
   
   //+++++++++++++++++++++CLOOG contents printing+++++++++++++++++++
-  cloog_input_dump_cloog(cloogOutFromScop, input, options);
+  cloog_input_dump_cloog(CloogOut, input, options);
 
   
   
@@ -2393,7 +2493,7 @@ mlir::Operation *polymer::createFuncOpFromOpenScop(std::unique_ptr<OslScop> scop
 
 
   // +++++++++++++++++++Print Program+++++++++++++++++++++++++++++++++++
-  cloog_program_print(cloogProgram, program);
+  cloog_program_print(ProgramOut, program);
 
   
   
@@ -2435,7 +2535,7 @@ mlir::Operation *polymer::createFuncOpFromOpenScop(std::unique_ptr<OslScop> scop
 
 
   // +++++++++++++++++Print clast+++++++++++++++++++++++++++
-  clast_pprint(clastPrintFile, rootStmt, 0, options);
+  clast_pprint(ClastOut, rootStmt, 0, options);
 
 
 
@@ -2455,9 +2555,9 @@ mlir::Operation *polymer::createFuncOpFromOpenScop(std::unique_ptr<OslScop> scop
 
 
 
-  fclose(cloogOutFromScop);
-  fclose(cloogProgram);
-  fclose(clastPrintFile);
+  fclose(CloogOut);
+  fclose(ProgramOut);
+  fclose(ClastOut);
   
 
   return deserializer.getFunc();

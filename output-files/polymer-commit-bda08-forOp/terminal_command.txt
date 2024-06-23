@@ -1,0 +1,3 @@
+
+/// Command to run mlir input code 
+./build/bin/polymer-opt -reg2mem -insert-redundant-load -extract-scop-stmt -pluto-opt -debug test/archive/PlutoTransform/matmul.mlir

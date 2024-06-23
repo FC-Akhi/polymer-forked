@@ -374,6 +374,15 @@ static mlir::FuncOp plutoTransform(mlir::FuncOp f,
                                                               prog,
                                                               dumpClastAfterPlutoStr)
                                       );
+
+
+
+
+  std::printf("Dumping g after createFuncOpenScop()\n");
+  
+  LLVM_DEBUG(g.dump());
+  
+  
   
   g.setAllArgAttrs(argAttrs);
 
