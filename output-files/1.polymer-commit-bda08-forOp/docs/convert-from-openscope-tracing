@@ -1,0 +1,97 @@
+### Convert from OpenScope Tracing from POLYMER
+
+
+Initialize Function Operation Interface:
+    
+    OSL Value Table:
+
+        Block argument of type 'index' at index 0 includes: i0, i2, i1
+        %1 = memref.alloc() : memref<64x64xf32> is mapped to A2
+        %0 = memref.alloc() : memref<64x64xf32> is mapped to A1
+        %2 = memref.alloc() : memref<64x64xf32> is mapped to A3
+        
+    Get Source Function Operation:
+
+    Get Source Function Name:
+        Comment: matmul
+    
+    Source Function Operation
+        
+        func @matmul() {
+          %0 = memref.alloc() : memref<64x64xf32>
+          %1 = memref.alloc() : memref<64x64xf32>
+          %2 = memref.alloc() : memref<64x64xf32>
+          affine.for %arg0 = 0 to 64 {
+            affine.for %arg1 = 0 to 64 {
+              affine.for %arg2 = 0 to 64 {
+                call @S0(%arg0, %arg1, %2, %arg2, %1, %0) : (index, index, memref<64x64xf32>, index, memref<64x64xf32>, memref<64x64xf32>) -> ()
+              }
+            }
+          }
+          return
+        }
+        
+    Get Source Function Name:
+
+        Comment: matmul
+    
+    Function Name:
+
+        matmul_opt
+    
+    Source Function Operation Location:
+
+        loc("test/archive/PlutoTransform/matmul.mlir":5:1)
+   
+    Source Function Operation Return Type:
+
+        () -> ()
+
+
+Initialize Symbol Table:
+    
+    OSL Symbol Table:
+
+        A1 is defined as: %0 = memref.alloc() : memref<64x64xf32>
+        A2 is defined as: %1 = memref.alloc() : memref<64x64xf32>
+        A3 is defined as: %2 = memref.alloc() : memref<64x64xf32>
+        i0 is defined as: <block argument> of type 'index' at index: 0
+        i1 is defined as: <block argument> of type 'index' at index: 0
+        i2 is defined as: <block argument> of type 'index' at index: 0
+
+    Symbol Table Inside Initialize Symbol Table:
+
+        zero is defined as: %c0 = arith.constant 0 : index
+        
+    Initialize Symbol:
+
+        Symbols: A1, A2, A3, i0, i1, i2
+
+    Definition Operations:
+    
+        %0 = memref.alloc() : memref<64x64xf32>
+        %1 = memref.alloc() : memref<64x64xf32>
+        %2 = memref.alloc() : memref<64x64xf32>
+
+    Parent Operations:
+    
+        func @matmul() {
+          %0 = memref.alloc() : memref<64x64xf32>
+          %1 = memref.alloc() : memref<64x64xf32>
+          %2 = memref.alloc() : memref<64x64xf32>
+          affine.for %arg0 = 0 to 64 {
+            affine.for %arg1 = 0 to 64 {
+              affine.for %arg2 = 0 to 64 {
+                call @S0(%arg0, %arg1, %2, %arg2, %1, %0) : (index, index, memref<64x64xf32>, index, memref<64x64xf32>, memref<64x64xf32>) -> ()
+              }
+            }
+          }
+          return
+        }
+        
+    Symbol Table After Initialize Symbol Call:
+
+        zero is defined as: %c0 = arith.constant 0 : index
+        A1 is now: %2 = memref.alloc() : memref<64x64xf32>
+        A2 is now: %1 = memref.alloc() : memref<64x64xf32>
+        A3 is now: %0 = memref.alloc() : memref<64x64xf32>
