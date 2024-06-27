@@ -1,0 +1,60 @@
+
+Entering getAffineLoopBound
+
+0
+Exiting getAffineLoopBound
+
+Entering getAffineLoopBound
+
+1
+Exiting getAffineLoopBound
+
+Entering getAffineLoopBound
+
+0
+Exiting getAffineLoopBound
+
+Entering getAffineLoopBound
+
+1
+Exiting getAffineLoopBound
+
+Entering getAffineLoopBound
+
+0
+Exiting getAffineLoopBound
+
+Entering getAffineLoopBound
+
+1
+Exiting getAffineLoopBound
+
+Entering getAffineLoopBound
+
+32*t1
+Exiting getAffineLoopBound
+
+Entering getAffineLoopBound
+
+32*t1+31
+Exiting getAffineLoopBound
+
+Entering getAffineLoopBound
+
+32*t3
+Exiting getAffineLoopBound
+
+Entering getAffineLoopBound
+
+32*t3+31
+Exiting getAffineLoopBound
+
+Entering getAffineLoopBound
+
+32*t2
+Exiting getAffineLoopBound
+
+Entering getAffineLoopBound
+
+32*t2+31
+Exiting getAffineLoopBound

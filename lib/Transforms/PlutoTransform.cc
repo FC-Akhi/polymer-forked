@@ -315,6 +315,11 @@ static mlir::FuncOp plutoTransform(mlir::FuncOp f,
   OslSymbolTable srcTable, dstTable;
 
   std::unique_ptr<OslScop> scop = createOpenScopFromFuncOp(f, srcTable);
+
+  std::printf("+++++++++++++++++++++++++++++++++++++++SCOP before transformation++++++++++++++++++++++++++++");
+  scop->print();
+
+
   
   if (!scop)
     return nullptr;

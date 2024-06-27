@@ -48,6 +48,7 @@ extern "C" {
 #include "llvm/Support/Error.h"
 #include "llvm/Support/FormatVariadic.h"
 #include "llvm/Support/SourceMgr.h"
+#include <llvm/Support/raw_ostream.h>
 
 
 #include "polymer/Support/nlohmann/json.hpp"
@@ -242,7 +243,12 @@ LogicalResult AffineExprBuilder::process(clast_name *expr, llvm::SmallVectorImpl
 
 }
 
+//  void AffineExpr::dump() const {
 
+//   print(llvm::errs());
+//   llvm::errs() << "\n";
+ 
+//  }
 
 
 LogicalResult AffineExprBuilder::process(clast_term *expr, llvm::SmallVectorImpl<AffineExpr> &affExprs) {
@@ -262,6 +268,14 @@ LogicalResult AffineExprBuilder::process(clast_term *expr, llvm::SmallVectorImpl
   /// This creates a constant affine expression using the extracted 64-bit integer value. 
   /// The getAffineConstantExpr method of the OpBuilder (b) is used to create this constant expression.
   AffineExpr affExpr = b.getAffineConstantExpr(constant);
+
+
+  /// F: Print the initial constant affine expression.
+  std::string str;
+  llvm::raw_string_ostream rso(str);
+  affExpr.print(rso);
+  llvm::outs() << "Initial AffineExpr: " << rso.str() << "\n";
+  
 
 
   /// This checks if the clast_term has a variable part (var). 
@@ -1289,13 +1303,29 @@ LogicalResult Importer::getAffineLoopBound(clast_expr *expr,
 
 
 
+
+  /// F: My snitch         
+  FILE *clast_expr_output = fopen("output-files/6.clast_expr_from_getAffineLoopBound.txt", "a");
+
+  fprintf(clast_expr_output, "\nEntering getAffineLoopBound\n");
+
+
+
   /// An AffineExprBuilder instance is created to help build affine expressions.
   AffineExprBuilder builder(context, symTable, &symbolTable, scop, options);
-
   /// A vector boundExprs is initialized to store the resulting affine expressions.
   SmallVector<AffineExpr, 4> boundExprs;
 
+
+
+  /// F: My snitch
+  fprintf(clast_expr_output, "\n");
+  fflush(clast_expr_output);  // Flush after entry
   
+  clast_pprint_expr(options, clast_expr_output, expr);
+  fflush(clast_expr_output);
+
+
 
   /// The processClastLoopBound function is called to process the clast expression and convert it into one or more affine expressions.
   if (failed(processClastLoopBound(expr, builder, boundExprs, options)))
@@ -1347,6 +1377,11 @@ LogicalResult Importer::getAffineLoopBound(clast_expr *expr,
 
   // Create the AffineMap for loop bound.
   affMap = AffineMap::get(numDims, numSymbols, boundExprs, context);
+
+  /// F: My snitch
+  // Log exit point
+  fprintf(clast_expr_output, "\nExiting getAffineLoopBound\n");
+  fclose(clast_expr_output);
 
   return success();
 
@@ -2118,6 +2153,9 @@ LogicalResult Importer::processStmt(clast_assignment *ass) {
 
 
 
+
+
+
 /// Generate the AffineForOp from a clast_for statement. First we create
 /// AffineMaps for the lower and upper bounds. Then we decide the step if
 /// there is any. And finally, we create the AffineForOp instance and generate
@@ -2129,15 +2167,7 @@ LogicalResult Importer::processStmt(clast_assignment *ass) {
 LogicalResult Importer::processStmt(clast_for *forStmt) {
 
 
-  FILE *clast_for_output = fopen("output-files/clast_for.txt", "a");
-
-  fprintf(clast_for_output, "\nclast for the for stmt upper bound is dumping\n");
-      
-  clast_pprint_expr(options, clast_for_output, forStmt->UB);
-
-  fprintf(clast_for_output, "\nclast for the for stmt lower bound is dumping\n");
-
-  clast_pprint_expr(options, clast_for_output, forStmt->LB);
+  FILE *clast_for_output = fopen("output-files/5.clast_for.txt", "a");
   
   
   /// Get loop bounds.
@@ -2162,15 +2192,36 @@ LogicalResult Importer::processStmt(clast_for *forStmt) {
   assert(!(forStmt->UB->type == clast_expr_red &&
            reinterpret_cast<clast_reduction *>(forStmt->UB)->type == clast_red_max) &&
          "If the upper bound is a reduced result, it should not use max for reduction.");
+    
+
+
+
+  /// F: My snitch
+  fprintf(clast_for_output, "\nforStmt->LB\n");
+
+  clast_pprint_expr(options, clast_for_output, forStmt->LB);
+  
+
+  if (failed(getAffineLoopBound(forStmt->LB, lbOperands, lbMap))) {
+    return failure();
+  }
+
+  
+  fprintf(clast_for_output, "\nfor->UB\n");
+  clast_pprint_expr(options, clast_for_output, forStmt->UB);
+
+  if (failed(getAffineLoopBound(forStmt->UB, ubOperands, ubMap, /*isUpper=*/true))) {
+    return failure();
+  }
 
 
 
   /// getAffineLoopBound to convert the lower bound (LB) and upper bound (UB) expressions into affine maps and their corresponding operands. 
   /// If either conversion fails, it returns a failure.
-  if (failed(getAffineLoopBound(forStmt->LB, lbOperands, lbMap)) ||
-      failed(getAffineLoopBound(forStmt->UB, ubOperands, ubMap, /*isUpper=*/true)))
+  // if (failed(getAffineLoopBound(forStmt->LB, lbOperands, lbMap)) ||
+  //     failed(getAffineLoopBound(forStmt->UB, ubOperands, ubMap, /*isUpper=*/true)))
 
-    return failure();
+  //   return failure();
 
 
   /// Initializes the loop stride to 1. If the stride is greater than 1, 
@@ -2351,7 +2402,7 @@ LogicalResult Importer::processStmt(clast_root *rootStmt) {
 
 LogicalResult Importer::processStmtList(clast_stmt *s) {
 
-  FILE *rootStmt_dump = fopen("output-files/rootStmt.txt", "a");
+  FILE *rootStmt_dump = fopen("output-files/4.rootStmt.txt", "a");
 
   // Check if the file is opened successfully
   if (!rootStmt_dump) {
@@ -2691,73 +2742,6 @@ namespace polymer {
 
         /// This is a lambda function (an anonymous function defined inline)
         [](llvm::SourceMgr &sourceMgr, MLIRContext *context) {  
-
-          // std::cout << "Inside lambda function" << std::endl;
-
-          // /// F: Dump information in JSON
-          // json registrationJson = {
-
-          //   {"registration", {
-            
-          //     {"name", "import-scop"},
-          //     {"lambda_function", {
-            
-          //       {"parameters", {
-            
-          //         {
-          //           {"name", "sourceMgr"},
-          //           {"type", "llvm::SourceMgr&"}
-          //         },
-          //         {
-          //           {"name", "context"},
-          //           {"type", "MLIRContext*"}
-          //         }
-                
-          //       }},
-            
-          //       {"body_summary", {
-                    
-          //         {"purpose", "Translate OpenScop representation to an MLIR module"},
-          //         {"inputs", {"sourceMgr", "context"}},
-          //         {"output", "MLIR module"}
-                
-          //       }}
-            
-          //     }},
-                
-          //     {"translation_function", "::translateOpenScopToModule"},
-          //     {"registration_class", "TranslateToMLIRRegistration"},
-          //     {"constructor_parameters", {"name", "lambda_function"}}
-            
-          //   }}
-          
-          // };
-
-          // j_v2["registration_info"] = registrationJson;
-
-          // /// F: Open an ofstream to write to the file "data.json"
-          // std::ofstream obj("data_v2.json");
-
-          // /// F: 
-          // if (!obj.is_open()) {
-          
-          //   std::cerr << "Failed to open file for writing.\n";
-          
-          // /// F: 
-          // } else {
-            
-          //   // Write formatted JSON data to the file
-          //   obj << registrationJson.dump(4); // The argument '4' makes the JSON output pretty-printed with an indentation of 4 spaces
-            
-          //   // Close the file stream
-          //   obj.close();
-            
-          //   // Output success message
-          //   std::cout << "Data has been dumped to data_v_2.json successfully.\n";
-
-          // }
-          
-          // std::cout << "Data has been dumped to data_v_2.json successfully.\n";
 
           /// This lambda function calls 'translateOpenScopToModule' to perform the actual translation
           /// The '::' scope resolution operator indicates that 'translateOpenScopToModule' is defined in the global namespace
