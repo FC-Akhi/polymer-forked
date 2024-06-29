@@ -10,12 +10,11 @@
 
 #include "cloog/cloog.h"
 #include "cloog/pprint.h"
+
 #include "osl/osl.h"
 #include "pluto/internal/pluto.h"
 #include "pluto/osl_pluto.h"
 #include "pluto/pluto.h"
-
-
 extern "C" {
 #include "pluto/internal/ast_transform.h"
 }
@@ -49,17 +48,22 @@ extern "C" {
 #include "llvm/Support/Error.h"
 #include "llvm/Support/FormatVariadic.h"
 #include "llvm/Support/SourceMgr.h"
+#include <llvm/Support/raw_ostream.h>
+
+
 
 
 #include "polymer/Support/nlohmann/json.hpp"
 
 using ordered_json = nlohmann::ordered_json;
+using json = nlohmann::json;
 
 using namespace polymer;
 using namespace mlir;
 
 /// My snippet
 // Create a JSON global object
+json j_v2;
 ordered_json j;
 ordered_json symbolTableJson;
 
@@ -68,10 +72,115 @@ typedef llvm::StringMap<mlir::Value> NameValueMap;
 typedef llvm::StringMap<std::string> IterScatNameMap;
 
 
+/// F: My snitch
+/// @brief : std::map for dumping the traces
+std::map<std::string, std::string> trace;
+int counter = 1;
 
-/// @brief : AffineExprBuilder class
+/// @brief Print the trace
+/// @param t 
+void trace_print(const std::map<std::string, std::string> &t) {
+
+    for (const auto & [key, value] : t)
+
+        std::cout << "[" << key << "] = " << value << ";"; 
+
+}
+
+
+
+/// @brief Dump the trace
+/// @param t : trace, std::map
+/// @param key : key of the map
+/// @param value : value of the map
+void trace_dump(std::map<std::string, std::string> &t, std::string key, std::string value) {
+
+
+    t[key] = value;
+
+
+}
+
+/// @brief these are the helping functions needed for Importer class methods 
+
+/// F: Function to convert mlir::Type to std::string
+std::string typeToString(mlir::Type type) {
+  
+  std::string str;
+  llvm::raw_string_ostream os(str);
+  
+  type.print(os);
+  return os.str();
+
+}
+
+
+
+
+/// F: Function to convert mlir::Location to std::string
+std::string locationToString(mlir::Location loc) {
+  
+  std::string locStr;
+  llvm::raw_string_ostream locStream(locStr);
+  
+  loc.print(locStream);
+  
+  return locStream.str();
+
+}
+
+
+
+
+/// F: Function to print mlir::Value to string
+std::string valueToString(mlir::Value value) {
+  
+  std::string str;
+  llvm::raw_string_ostream os(str);
+  
+  value.print(os);
+  
+  return os.str();
+
+}
+
+
+
+
+/// F: Function to print mlir::Operation to string
+std::string operationToString(mlir::Operation* op) {
+
+  std::string str;
+  llvm::raw_string_ostream os(str);
+
+  op->print(os);
+
+  return os.str();
+
+}
+
+
+
+
+
+
+/// @brief Snitch to convert clast_expr to string
+/// @param expr 
+/// @return 
+std::string clast_expr_to_string(clast_expr *expr) {
+    // Implementation depends on the structure of clast_expr
+    // This is a simple placeholder
+    if (!expr) return "null";
+    // For example purposes, let's just return the address
+    return "clast_expr at " + std::to_string(reinterpret_cast<uintptr_t>(expr));
+}
+
+
+
+
+
+/// @brief AffineExprBuilder class
 namespace {
-
 
   typedef llvm::StringMap<mlir::Value> SymbolTable;
 
@@ -80,8 +189,6 @@ namespace {
   class AffineExprBuilder {
   
   public:
-    
-    
     AffineExprBuilder(MLIRContext *context, OslSymbolTable *symTable,
                       SymbolTable *symbolTable, OslScop *scop,
                       CloogOptions *options)
@@ -95,44 +202,44 @@ namespace {
 
     void reset();
 
-    LogicalResult process(clast_name *expr,
-                          llvm::SmallVectorImpl<AffineExpr> &affExprs);
-    LogicalResult process(clast_term *expr,
-                          llvm::SmallVectorImpl<AffineExpr> &affExprs);
-    LogicalResult process(clast_binary *expr,
-                          llvm::SmallVectorImpl<AffineExpr> &affExprs);
-    LogicalResult process(clast_reduction *expr,
-                          llvm::SmallVectorImpl<AffineExpr> &affExprs);
+    LogicalResult process(clast_name *expr, llvm::SmallVectorImpl<AffineExpr> &affExprs);
+    
+    LogicalResult process(clast_term *expr, llvm::SmallVectorImpl<AffineExpr> &affExprs);
+    
+    LogicalResult process(clast_binary *expr, llvm::SmallVectorImpl<AffineExpr> &affExprs);
+    
+    LogicalResult process(clast_reduction *expr, llvm::SmallVectorImpl<AffineExpr> &affExprs);
 
-    LogicalResult
-    processSumReduction(clast_reduction *expr,
-                        llvm::SmallVectorImpl<AffineExpr> &affExprs);
-    LogicalResult
-    processMinOrMaxReduction(clast_reduction *expr,
-                            llvm::SmallVectorImpl<AffineExpr> &affExprs);
+    LogicalResult processSumReduction(clast_reduction *expr, llvm::SmallVectorImpl<AffineExpr> &affExprs);
+    
+    LogicalResult processMinOrMaxReduction(clast_reduction *expr, llvm::SmallVectorImpl<AffineExpr> &affExprs);
 
     /// OpBuilder used to create AffineExpr.
     OpBuilder b;
+    
     /// The MLIR context
     MLIRContext *context;
+    
     /// The OslScop of the whole program.
     OslScop *scop;
+    
     /// TODO: keep only one of them
     OslSymbolTable *symTable;
+    
     SymbolTable *symbolTable;
+    
     ///
     CloogOptions *options;
 
     llvm::StringMap<unsigned> symbolNames;
     llvm::StringMap<unsigned> dimNames;
-
     llvm::DenseMap<Value, std::string> valueMap;
+  
+  
   };
 
 
 } // namespace
-
-
 
 
 
@@ -147,79 +254,17 @@ void AffineExprBuilder::reset() {
 
 
 
-
-
-LogicalResult AffineExprBuilder::process(clast_expr *expr, llvm::SmallVectorImpl<AffineExpr> &affExprs) {
-
-  switch (expr->type) {
-  case clast_expr_name:
-    if (failed(process(reinterpret_cast<clast_name *>(expr), affExprs)))
-      return failure();
-    break;
-  case clast_expr_term:
-    if (failed(process(reinterpret_cast<clast_term *>(expr), affExprs)))
-      return failure();
-    break;
-  case clast_expr_bin:
-    if (failed(process(reinterpret_cast<clast_binary *>(expr), affExprs)))
-      return failure();
-    break;
-  case clast_expr_red:
-    if (failed(process(reinterpret_cast<clast_reduction *>(expr), affExprs)))
-      return failure();
-    break;
-  }
-  return success();
-
-}
-
-
-
-
-/// Find the name in the scop to determine the type (dim or symbol). The
-/// position is decided by the size of dimNames/symbolNames.
-/// TODO: handle the dim case.
-LogicalResult AffineExprBuilder::process(clast_name *expr, llvm::SmallVectorImpl<AffineExpr> &affExprs) {
-
-  if (scop->isSymbol(expr->name)) {
-    if (symbolNames.find(expr->name) != symbolNames.end())
-      affExprs.push_back(b.getAffineSymbolExpr(symbolNames[expr->name]));
-    else {
-      affExprs.push_back(b.getAffineSymbolExpr(symbolNames.size()));
-      size_t numSymbols = symbolNames.size();
-      symbolNames[expr->name] = numSymbols;
-
-      Value v = symbolTable->lookup(expr->name);
-      valueMap[v] = expr->name;
-    }
-  } else if (mlir::Value iv = symbolTable->lookup(expr->name)) {
-    if (dimNames.find(expr->name) != dimNames.end())
-      affExprs.push_back(b.getAffineDimExpr(dimNames[expr->name]));
-    else {
-      affExprs.push_back(b.getAffineDimExpr(dimNames.size()));
-      size_t numDims = dimNames.size();
-      dimNames[expr->name] = numDims;
-      valueMap[iv] = expr->name;
-    }
-  } else {
-    return failure();
-  }
-
-  return success();
-
-}
-
-
-
-
 /// Get the int64_t representation of a cloog_int_t.
 static LogicalResult getI64(cloog_int_t num, int64_t *res) {
-
+  
   // TODO: is there a better way to work around this file-based interface?
   // First, we read the cloog integer into a char buffer.
   char buf[100]; // Should be sufficient for int64_t in string.
+  
   FILE *bufFile = fmemopen(reinterpret_cast<void *>(buf), 32, "w");
+  
   cloog_int_print(bufFile, num);
+  
   fclose(bufFile); // Should close the file or the buf won't be flushed.
 
   // Then we parse the string as int64_t.
@@ -232,38 +277,203 @@ static LogicalResult getI64(cloog_int_t num, int64_t *res) {
 
 
 
-LogicalResult AffineExprBuilder::process(clast_term *expr, llvm::SmallVectorImpl<AffineExpr> &affExprs) {
 
+
+LogicalResult AffineExprBuilder::process(clast_expr *expr, llvm::SmallVectorImpl<AffineExpr> &affExprs) {
+
+  switch (expr->type) {
+
+  case clast_expr_name:
+    if (failed(process(reinterpret_cast<clast_name *>(expr), affExprs)))
+      return failure();
+    break;
+  
+  
+  case clast_expr_term:
+    if (failed(process(reinterpret_cast<clast_term *>(expr), affExprs)))
+      return failure();
+    break;
+  
+  
+  case clast_expr_bin:
+    if (failed(process(reinterpret_cast<clast_binary *>(expr), affExprs)))
+      return failure();
+    break;
+  
+  
+  case clast_expr_red:
+    if (failed(process(reinterpret_cast<clast_reduction *>(expr), affExprs)))
+      return failure();
+    break;
+  
+  
+  }
+  
+  
+  return success();
+
+}
+
+
+
+
+/// Find the name in the scop to determine the type (dim or symbol). The
+/// position is decided by the size of dimNames/symbolNames.
+/// TODO: handle the dim case.
+LogicalResult AffineExprBuilder::process(clast_name *expr, llvm::SmallVectorImpl<AffineExpr> &affExprs) {
+  
+
+  /// Check if the Name is a Symbol
+  if (scop->isSymbol(expr->name)) {
+
+    std::printf("[process(clast_name)]I AM HIT\n");
+
+    /// Start processing the Symbol
+    /// Check if the Symbol is Already in symbolNames map. That means it has been proceesed before.
+    ///  This comparison checks if the iterator returned by find is different from end(). 
+    /// If it is different, it means the element was found in the map. If it is equal to end(), 
+    /// it means the element was not found.
+    if (symbolNames.find(expr->name) != symbolNames.end())
+
+      /// push the affine expression of symbol from symbolNames map to small vector affExprs
+      affExprs.push_back(b.getAffineSymbolExpr(symbolNames[expr->name]));
+    
+    else {
+      
+      
+      affExprs.push_back(b.getAffineSymbolExpr(symbolNames.size()));
+      size_t numSymbols = symbolNames.size();
+
+      symbolNames[expr->name] = numSymbols;
+
+      Value v = symbolTable->lookup(expr->name);
+      valueMap[v] = expr->name;
+    }
+
+  } 
+  
+  else if (mlir::Value iv = symbolTable->lookup(expr->name)) {
+  
+    if (dimNames.find(expr->name) != dimNames.end())
+  
+      affExprs.push_back(b.getAffineDimExpr(dimNames[expr->name]));
+  
+    else {
+  
+      affExprs.push_back(b.getAffineDimExpr(dimNames.size()));
+      size_t numDims = dimNames.size();
+      dimNames[expr->name] = numDims;
+      valueMap[iv] = expr->name;
+
+
+  
+    }
+  
+  } else {
+  
+    return failure();
+  
+  }
+
+  /// F: Iterate over the valueMap
+  std::cout << "\n" <<"Printing ValueMap" << "\n";
+
+  for (const auto& entry : valueMap) {
+    mlir::Value key = entry.first;
+    std::string value = entry.second;
+
+    std::string keyStr = valueToString(key);
+
+
+    std::cout << "Key: " << keyStr << ", Value: " << value << std::endl;
+
+    /// Insert into JSON object, using an array to store multiple values
+    // oslValueJson[keyStr].push_back(value);
+  }
+
+
+
+
+  return success();
+
+}
+
+//  void AffineExpr::dump() const {
+
+//   print(llvm::errs());
+//   llvm::errs() << "\n";
+ 
+//  }
+
+
+LogicalResult AffineExprBuilder::process(clast_term *expr, llvm::SmallVectorImpl<AffineExpr> &affExprs) {
+  
   // First get the I64 representation of a cloog int.
   int64_t constant;
+
+
+  /// This extracts the 64-bit integer value from the clast_term's val field using the getI64 function. 
+  /// If this extraction fails, the function returns a failure.
   if (failed(getI64(expr->val, &constant)))
     return failure();
 
-  // Next create a constant AffineExpr.
+
+
+  /// Next create a constant AffineExpr.
+  /// This creates a constant affine expression using the extracted 64-bit integer value. 
+  /// The getAffineConstantExpr method of the OpBuilder (b) is used to create this constant expression.
   AffineExpr affExpr = b.getAffineConstantExpr(constant);
 
-  // If var is not NULL, it means this term is var * val. We should create the
-  // expr that denotes var and multiplies it with the AffineExpr for val.
-  if (expr->var) {
-    SmallVector<AffineExpr, 1> varAffExprs;
-    if (failed(process(expr->var, varAffExprs)))
-      return failure();
-    assert(varAffExprs.size() == 1 &&
-           "There should be a single expression that stands for the var expr.");
 
+  /// F: Print the initial constant affine expression.
+  std::string str;
+  llvm::raw_string_ostream rso(str);
+  affExpr.print(rso);
+  llvm::outs() << "Initial AffineExpr: " << rso.str() << "\n";
+  
+
+
+  /// This checks if the clast_term has a variable part (var). 
+  /// If var is not NULL, it means this term is of the form var * val. We should create the
+  /// expr that denotes var and multiplies it with the AffineExpr for val.
+  if (expr->var) {
+
+    /// A new SmallVector of AffineExpr is created to hold the affine expressions corresponding to the variable part.
+    SmallVector<AffineExpr, 1> varAffExprs;
+
+
+    /// The process function is called recursively to process the variable part of the term. 
+    /// If this processing fails, the function returns a failure.
+    /// The process function should produce exactly one AffineExpr for the variable part.
+    if (failed(process(expr->var, varAffExprs)))
+
+      return failure();
+
+
+    /// An assertion checks that the process call for the variable part produced exactly one AffineExpr.
+    assert(varAffExprs.size() == 1 && "There should be a single expression that stands for the var expr.");
+
+
+    /// The constant affine expression (affExpr) is then multiplied by the affine expression for the variable part (varAffExprs[0]).
     affExpr = affExpr * varAffExprs[0];
+  
   }
 
+
+  /// The resulting affine expression, which may now represent var * val or just val 
+  /// if there was no variable part, is added to the affExprs vector.
   affExprs.push_back(affExpr);
 
   return success();
+
 }
 
 
 
 
 LogicalResult AffineExprBuilder::process(clast_binary *expr, llvm::SmallVectorImpl<AffineExpr> &affExprs) {
-
+  
+  
   // Handle the LHS expression.
   SmallVector<AffineExpr, 1> lhsAffExprs;
   if (failed(process(expr->LHS, lhsAffExprs)))
@@ -301,8 +511,9 @@ LogicalResult AffineExprBuilder::process(clast_binary *expr, llvm::SmallVectorIm
 
 
 
-LogicalResult AffineExprBuilder::process(clast_reduction *expr, llvm::SmallVectorImpl<AffineExpr> &affExprs) {
 
+LogicalResult AffineExprBuilder::process(clast_reduction *expr, llvm::SmallVectorImpl<AffineExpr> &affExprs) {
+  
   if (expr->n == 1) {
     if (failed(process(expr->elts[0], affExprs)))
       return failure();
@@ -324,6 +535,7 @@ LogicalResult AffineExprBuilder::process(clast_reduction *expr, llvm::SmallVecto
   return success();
 
 }
+
 
 
 
@@ -365,6 +577,7 @@ LogicalResult AffineExprBuilder::processSumReduction(clast_reduction *expr, llvm
 
 
 
+
 LogicalResult AffineExprBuilder::processMinOrMaxReduction(clast_reduction *expr, llvm::SmallVectorImpl<AffineExpr> &affExprs) {
 
   if (failed(process(expr->elts[0], affExprs)))
@@ -376,10 +589,7 @@ LogicalResult AffineExprBuilder::processMinOrMaxReduction(clast_reduction *expr,
   }
 
   return success();
-
 }
-
-
 
 
 
@@ -433,30 +643,35 @@ static void buildIterToScatNameMap(IterScatNameMap &iterToScatName,
 
 
 
-/// @brief : IterScatNameMapper class
+
+
+
+
+
+
+/// @brief IterScatNameMapper class
 namespace {
 
   /// Build mapping between the iter names in the original code to the scatname in
   /// the OpenScop.
   class IterScatNameMapper {
+    public:
 
-  public:
+      IterScatNameMapper(OslScop *scop) : scop(scop) {}
 
-    IterScatNameMapper(OslScop *scop) : scop(scop) {}
+      void visitStmtList(clast_stmt *s);
 
-    void visitStmtList(clast_stmt *s);
+      IterScatNameMap getIterScatNameMap() { return iterScatNameMap; };
 
-    IterScatNameMap getIterScatNameMap() { return iterScatNameMap; };
+    private:
 
-  private:
-    void visit(clast_for *forStmt);
-    void visit(clast_guard *guardStmt);
-    void visit(clast_user_stmt *userStmt);
+      void visit(clast_for *forStmt);
+      void visit(clast_user_stmt *userStmt);
 
-    OslScop *scop;
+      OslScop *scop;
 
-    IterScatNameMap iterScatNameMap;
-  
+      IterScatNameMap iterScatNameMap;
+      
   };
 
 } // namespace
@@ -470,9 +685,8 @@ void IterScatNameMapper::visitStmtList(clast_stmt *s) {
       visit(reinterpret_cast<clast_user_stmt *>(s));
     } else if (CLAST_STMT_IS_A(s, stmt_for)) {
       visit(reinterpret_cast<clast_for *>(s));
-    } else if (CLAST_STMT_IS_A(s, stmt_guard)) {
-      visit(reinterpret_cast<clast_guard *>(s));
-    }
+    } 
+    
   }
 }
 
@@ -482,13 +696,6 @@ void IterScatNameMapper::visitStmtList(clast_stmt *s) {
 
 void IterScatNameMapper::visit(clast_for *forStmt) {
   visitStmtList(forStmt->body);
-}
-
-
-
-
-void IterScatNameMapper::visit(clast_guard *guardStmt) {
-  visitStmtList(guardStmt->then);
 }
 
 
@@ -514,7 +721,14 @@ void IterScatNameMapper::visit(clast_user_stmt *userStmt) {
 
 
 
-/// @brief : Importer class
+
+
+
+
+
+
+/// @brief: Below this point all things belongs to Importer  
+/// @brief Importer class
 namespace {
 
   /// Import MLIR code from the clast AST.
@@ -583,7 +797,7 @@ namespace {
 
       LogicalResult processStmt(clast_root *rootStmt);
       LogicalResult processStmt(clast_for *forStmt);
-      LogicalResult processStmt(clast_guard *guardStmt);
+
       LogicalResult processStmt(clast_user_stmt *userStmt);
       LogicalResult processStmt(clast_assignment *ass);
 
@@ -630,6 +844,123 @@ Importer::Importer(MLIRContext *context, ModuleOp module, OslSymbolTable *symTab
   b.setInsertionPointToStart(module.getBody());
 
 }
+
+
+
+
+
+
+
+
+static mlir::Value findBlockArg(mlir::Value v) {
+
+  mlir::Value r = v;
+
+  while (r != nullptr) {
+
+    if (r.isa<BlockArgument>())
+
+      break;
+
+    mlir::Operation *defOp = r.getDefiningOp();
+
+    if (!defOp || defOp->getNumOperands() != 1)
+
+      return nullptr;
+
+    if (!isa<mlir::arith::IndexCastOp>(defOp))
+
+      return nullptr;
+
+    r = defOp->getOperand(0);
+
+  }
+
+  return r;
+
+}
+
+/// We treat the provided the clast_expr as a loop bound. If it is a min/max
+/// reduction, we will expand that into multiple expressions.
+static LogicalResult processClastLoopBound(clast_expr *expr,
+                                           AffineExprBuilder &builder,
+                                           SmallVectorImpl<AffineExpr> &exprs,
+                                           CloogOptions *options) {
+
+
+  FILE *expandedExprs_dump = fopen("output-files/processClastLoopBound.txt", "a");
+  
+
+  
+  SmallVector<clast_expr *, 1> expandedExprs;
+
+  if (expr->type == clast_expr_red) {
+
+    clast_reduction *red = reinterpret_cast<clast_reduction *>(expr);
+
+    if (red->type == clast_red_max || red->type == clast_red_min) {
+
+      for (int i = 0; i < red->n; i++) {
+
+        expandedExprs.push_back(red->elts[i]);
+
+      }
+    
+    }
+  
+  }
+
+  
+  if (expandedExprs.empty()) // no expansion, just put the original input in.
+  
+    expandedExprs.push_back(expr);
+
+
+
+  
+  for (clast_expr *e : expandedExprs) {
+
+    /// F: Snitch to dump expandedExprs vector to file
+    fprintf(expandedExprs_dump, "Bounds printing:\n");
+    clast_pprint_expr(options, expandedExprs_dump, e);
+
+
+
+    if (failed(builder.process(e, exprs)))
+  
+      return failure();
+
+  }
+
+
+
+  fclose(expandedExprs_dump);
+
+  return success();
+
+
+
+}
+
+
+
+static std::unique_ptr<OslScop> readOpenScop(llvm::MemoryBufferRef buf) {
+  
+  // Read OpenScop by OSL API.
+  // TODO: is there a better way to get the FILE pointer from
+  // MemoryBufferRef?
+  FILE *inputFile = fmemopen(reinterpret_cast<void *>(const_cast<char *>(buf.getBufferStart())), buf.getBufferSize(), "r");
+
+  auto scop = std::make_unique<OslScop>(osl_scop_read(inputFile));
+  
+  fclose(inputFile);
+
+  return scop;
+
+}
+
+
+
 
 
 
@@ -683,9 +1014,7 @@ LogicalResult Importer::parseUserStmtBody(llvm::StringRef body, std::string &cal
 
 
 
-
-void Importer::createCalleeAndCallerArgs(llvm::StringRef calleeName, llvm::ArrayRef<std::string> args,
-                                         mlir::FuncOp &callee, SmallVectorImpl<mlir::Value> &callerArgs) {
+void Importer::createCalleeAndCallerArgs(llvm::StringRef calleeName, llvm::ArrayRef<std::string> args, mlir::FuncOp &callee, SmallVectorImpl<mlir::Value> &callerArgs) {
   
   // TODO: avoid duplicated callee creation
   // Cache the current insertion point before changing it for the new callee
@@ -812,8 +1141,6 @@ void Importer::createCalleeAndCallerArgs(llvm::StringRef calleeName, llvm::Array
 
 
 
-
-
 void Importer::getAffineExprForLoopIterator( clast_stmt *subst, llvm::SmallVectorImpl<mlir::Value> &operands, AffineMap &affMap) {
 
   assert(CLAST_STMT_IS_A(subst, stmt_ass) && "Should use clast assignment here.");
@@ -853,8 +1180,6 @@ void Importer::getAffineExprForLoopIterator( clast_stmt *subst, llvm::SmallVecto
 
 
 }
-
-
 
 
 
@@ -915,98 +1240,44 @@ void Importer::getInductionVars(clast_user_stmt *userStmt, osl_body_p body, Smal
 
 
 
-
-
-static mlir::Value findBlockArg(mlir::Value v) {
-
-  mlir::Value r = v;
-
-  while (r != nullptr) {
-
-    if (r.isa<BlockArgument>())
-
-      break;
-
-    mlir::Operation *defOp = r.getDefiningOp();
-
-    if (!defOp || defOp->getNumOperands() != 1)
-
-      return nullptr;
-
-    if (!isa<mlir::arith::IndexCastOp>(defOp))
-
-      return nullptr;
-
-    r = defOp->getOperand(0);
-
-  }
-
-  return r;
-
-}
-
-
-
-
-
-/// We treat the provided the clast_expr as a loop bound. If it is a min/max
-/// reduction, we will expand that into multiple expressions.
-static LogicalResult processClastLoopBound(clast_expr *expr,
-                                           AffineExprBuilder &builder,
-                                           SmallVectorImpl<AffineExpr> &exprs) {
-
-  SmallVector<clast_expr *, 1> expandedExprs;
-
-  if (expr->type == clast_expr_red) {
-
-    clast_reduction *red = reinterpret_cast<clast_reduction *>(expr);
-
-    if (red->type == clast_red_max || red->type == clast_red_min) {
-
-      for (int i = 0; i < red->n; i++) {
-
-        expandedExprs.push_back(red->elts[i]);
-
-      }
-    
-    }
-  
-  }
-
-  
-  if (expandedExprs.empty()) // no expansion, just put the original input in.
-  
-    expandedExprs.push_back(expr);
-
-  
-  for (clast_expr *e : expandedExprs)
-  
-    if (failed(builder.process(e, exprs)))
-  
-      return failure();
-
-  return success();
-
-}
-
-
-
-
-
-
 LogicalResult Importer::getAffineLoopBound(clast_expr *expr,
                                            llvm::SmallVectorImpl<mlir::Value> &operands,
                                            AffineMap &affMap, bool isUpper) {
 
-  AffineExprBuilder builder(context, symTable, &symbolTable, scop, options);
 
+
+
+  /// F: My snitch         
+  FILE *clast_expr_output = fopen("output-files/6.clast_expr_from_getAffineLoopBound.txt", "a");
+
+  fprintf(clast_expr_output, "\nEntering getAffineLoopBound\n");
+
+
+
+  /// An AffineExprBuilder instance is created to help build affine expressions.
+  AffineExprBuilder builder(context, symTable, &symbolTable, scop, options);
+  /// A vector boundExprs is initialized to store the resulting affine expressions.
   SmallVector<AffineExpr, 4> boundExprs;
 
-  if (failed(processClastLoopBound(expr, builder, boundExprs)))
+
+
+  /// F: My snitch
+  fprintf(clast_expr_output, "\n");
+  
+  
+  clast_pprint_expr(options, clast_expr_output, expr);
+  
+
+
+
+  /// The processClastLoopBound function is called to process the clast expression and convert it into one or more affine expressions.
+  if (failed(processClastLoopBound(expr, builder, boundExprs, options)))
   
     return failure();
 
-  // If looking at the upper bound, we should add 1 to all of them.
+
+
+  /// If looking at the upper bound, we should add 1 to all of them.
   if (isUpper)
   
     for (auto &expr : boundExprs)
@@ -1050,6 +1321,11 @@ LogicalResult Importer::getAffineLoopBound(clast_expr *expr,
   // Create the AffineMap for loop bound.
   affMap = AffineMap::get(numDims, numSymbols, boundExprs, context);
 
+  /// F: My snitch
+  // Log exit point
+  fprintf(clast_expr_output, "\nExiting getAffineLoopBound\n");
+  fclose(clast_expr_output);
+
   return success();
 
 }
@@ -1058,20 +1334,59 @@ LogicalResult Importer::getAffineLoopBound(clast_expr *expr,
 
 
 
-static std::unique_ptr<OslScop> readOpenScop(llvm::MemoryBufferRef buf) {
-  
-  // Read OpenScop by OSL API.
-  // TODO: is there a better way to get the FILE pointer from
-  // MemoryBufferRef?
-  FILE *inputFile = fmemopen(reinterpret_cast<void *>(const_cast<char *>(buf.getBufferStart())), buf.getBufferSize(), "r");
+LogicalResult Importer::processStmt(clast_assignment *ass) {
 
-  auto scop = std::make_unique<OslScop>(osl_scop_read(inputFile));
-  
-  fclose(inputFile);
+  printf("inside assignement\n");
 
-  return scop;
+  SmallVector<mlir::Value, 8> substOperands;
+
+  AffineMap substMap;
+
+  getAffineExprForLoopIterator((clast_stmt *)ass, substOperands, substMap);
+
+  mlir::Operation *op;
+
+
+  if (substMap.isSingleConstant()) {
+
+    op = b.create<mlir::arith::ConstantOp>(b.getUnknownLoc(), b.getIndexType(), b.getIntegerAttr(b.getIndexType(), substMap.getSingleConstantResult()));
+
+  } 
+  
+  else if (substMap.getNumResults() == 1) {
+
+    op = b.create<mlir::AffineApplyOp>(b.getUnknownLoc(), substMap,
+                                       substOperands);
+  } 
+  
+  else {
+
+    assert(ass->RHS->type == clast_expr_red);
+
+    clast_reduction *red = reinterpret_cast<clast_reduction *>(ass->RHS);
+
+    assert(red->type != clast_red_sum);
+
+    if (red->type == clast_red_max)
+
+      op = b.create<mlir::AffineMaxOp>(b.getUnknownLoc(), substMap, substOperands);
+
+    else
+      
+      op = b.create<mlir::AffineMinOp>(b.getUnknownLoc(), substMap, substOperands);
+  
+  }
+
+  assert(op->getNumResults() == 1);
+  
+  symbolTable[ass->LHS] = op->getResult(0);
+  
+  lhsToAss[ass->LHS] = (clast_stmt *)ass;
+  
+  return success();
 
 }
+
 
 
 
@@ -1217,185 +1532,224 @@ LogicalResult Importer::processStmt(clast_user_stmt *userStmt) {
 
 
 
+/// Generate the AffineForOp from a clast_for statement. First we create
+/// AffineMaps for the lower and upper bounds. Then we decide the step if
+/// there is any. And finally, we create the AffineForOp instance and generate
+/// its body.
+/// @brief : translates CLooG AST (i.e. clast_for) representations of loops into MLIR AffineForOp operations. The function Importer::processStmt is 
+/// responsible for processing a CLooG for-loop statement (i.e. clast_for) and converting it into an MLIR affine for-loop.
+/// @param forStmt : clast_for *forStmt: A pointer to a CLooG AST for-loop statement
+/// @return : 
+LogicalResult Importer::processStmt(clast_for *forStmt) {
 
-/// Process the if statement.
-LogicalResult Importer::processStmt(clast_guard *guardStmt) {
 
-  printf("inside guardstmt\n");
-
-  // Build the integer set.
-  SmallVector<AffineExpr, 4> conds;
-  SmallVector<bool, 4> eqFlags;
-
-  AffineExprBuilder builder(context, symTable, &symbolTable, scop, options);
-
-  for (int i = 0; i < guardStmt->n; i++) {
+  FILE *clast_for_output = fopen("output-files/5.clast_for.txt", "a");
   
-    clast_equation eq = guardStmt->eq[i];
-
-    SmallVector<AffineExpr, 4> lhsExprs, rhsExprs;
-
-    clast_expr *lhs = eq.LHS;
   
-    if (eq.LHS->type == clast_expr_name || 
-        (eq.LHS->type == clast_expr_term &&
-        ((clast_term *)eq.LHS)->var->type == clast_expr_name)) {
-      
-      clast_expr *expr = eq.LHS;
-      
-      if (expr->type == clast_expr_term)
-      
-        expr = ((clast_term *)eq.LHS)->var;
+  /// Get loop bounds.
+  /// Declares variables of type affine maps for the lower bound (lbMap) and upper bound (ubMap) of the loop.
+  AffineMap lbMap, ubMap;
 
-      const char *name = ((clast_name *)expr)->name;
-      
-      if (lhsToAss.find(name) != lhsToAss.end()) {
-      
-        // can be replaced by assign.
-        clast_stmt *s = lhsToAss[name];
-      
-        if (CLAST_STMT_IS_A(s, stmt_ass)) {
-      
-          clast_assignment *ass = (clast_assignment *)s;
-      
-          if (ass->RHS->type == clast_expr_red) {
-      
-            clast_reduction *red = (clast_reduction *)ass->RHS;
-      
-            if ((red->type == clast_red_max && eq.sign < 0) ||
-                (red->type == clast_red_min && eq.sign > 0))
-      
-              lhs = ass->RHS;
-      
-          }
-      
-        }
-      
-      }
-    
-    }
 
-    assert(succeeded(builder.process(lhs, lhsExprs)));
-    
-    assert(succeeded(builder.process(eq.RHS, rhsExprs)));
-
-    for (AffineExpr rhsExpr : rhsExprs) {
-    
-      AffineExpr eqExpr;
-    
-      for (AffineExpr lhsExpr : lhsExprs) {
-    
-        if (eq.sign >= 0)
-    
-          eqExpr = lhsExpr - rhsExpr;
-    
-        else
-    
-          eqExpr = rhsExpr - lhsExpr;
-    
-        conds.push_back(eqExpr);
-    
-        eqFlags.push_back(eq.sign == 0);
-    
-      }
-    
-    }
+  /// The actual size of each cell in memory depends on the size of the mlir::Value type
+  /// It allocates a fixed amount of space for a small number of elements and only falls back to heap allocation if that space is exceeded
+  llvm::SmallVector<mlir::Value, 8> lbOperands, ubOperands;
   
+
+  /// Ensures that the loop has both a lower bound (LB) and an upper bound (UB). If either bound is missing, it asserts with an error message
+  assert((forStmt->LB && forStmt->UB) && "Unbounded loops are not allowed.");
+
+
+  // TODO: simplify these sanity checks.
+  assert(!(forStmt->LB->type == clast_expr_red &&
+           reinterpret_cast<clast_reduction *>(forStmt->LB)->type == clast_red_min) &&
+         "If the lower bound is a reduced result, it should not use min for reduction.");
+
+  assert(!(forStmt->UB->type == clast_expr_red &&
+           reinterpret_cast<clast_reduction *>(forStmt->UB)->type == clast_red_max) &&
+         "If the upper bound is a reduced result, it should not use max for reduction.");
+    
+
+
+
+  /// F: My snitch
+  fprintf(clast_for_output, "\nforStmt->LB\n");
+
+  clast_pprint_expr(options, clast_for_output, forStmt->LB);
+  
+
+  if (failed(getAffineLoopBound(forStmt->LB, lbOperands, lbMap))) {
+    return failure();
   }
 
-  SmallVector<mlir::Value, 8> operands(builder.dimNames.size() + builder.symbolNames.size());
+  
+  fprintf(clast_for_output, "\nfor->UB\n");
+  clast_pprint_expr(options, clast_for_output, forStmt->UB);
 
-  for (const auto &it : builder.dimNames) {
-
-    mlir::Value iv = symbolTable[it.first()];
-    
-    assert(iv != nullptr);
-    
-    operands[it.second] = iv;
-  
-  }
-  
-  for (const auto &it : builder.symbolNames) {
-  
-    mlir::Value sym = symbolTable[it.first()];
-  
-    assert(sym != nullptr);
-  
-    operands[it.second + builder.dimNames.size()] = sym;
-  
+  if (failed(getAffineLoopBound(forStmt->UB, ubOperands, ubMap, /*isUpper=*/true))) {
+    return failure();
   }
 
 
-  IntegerSet iset = IntegerSet::get(builder.dimNames.size(),
-                                    builder.symbolNames.size(), 
-                                    conds, eqFlags);
+
+  /// getAffineLoopBound to convert the lower bound (LB) and upper bound (UB) expressions into affine maps and their corresponding operands. 
+  /// If either conversion fails, it returns a failure.
+  // if (failed(getAffineLoopBound(forStmt->LB, lbOperands, lbMap)) ||
+  //     failed(getAffineLoopBound(forStmt->UB, ubOperands, ubMap, /*isUpper=*/true)))
+
+  //   return failure();
 
 
-  mlir::AffineIfOp ifOp = b.create<mlir::AffineIfOp>(b.getUnknownLoc(), iset, operands, false);
+  /// Initializes the loop stride to 1. If the stride is greater than 1, 
+  /// it converts the stride to an int64_t value. If the conversion fails, it returns a failure
+  int64_t stride = 1;
 
-  Block *entryBlock = ifOp.getThenBlock();
+  if (cloog_int_gt_si(forStmt->stride, 1)) {
+
+    if (failed(getI64(forStmt->stride, &stride)))
+
+      return failure();
+
+  }
+
+
+
+  /// Create the for operation.
+  /// Creates an MLIR affine for-loop operation (AffineForOp) using the lower bound operands and map, upper bound operands and map, and the stride. 
+  /// The loop's location is set to an unknown location in the context
+  mlir::AffineForOp forOp = b.create<mlir::AffineForOp>(UnknownLoc::get(context), lbOperands, lbMap, ubOperands, ubMap, stride);
+
+
+  // Update the loop IV mapping.
+  auto &entryBlock = *forOp.getLoopBody().getBlocks().begin();
   
-  b.setInsertionPointToStart(entryBlock);
+  // TODO: confirm is there a case that forOp has multiple operands.
+  assert(entryBlock.getNumArguments() == 1 && "affine.for should only have one block argument (iv).");
+
+
+
+  symTable->setValue(forStmt->iterator, entryBlock.getArgument(0), OslSymbolTable::LoopIV);
+
+  // Symbol table is mutable.
+  // TODO: is there a better way to improve this? Not very safe.
+  mlir::Value symValue = symbolTable[forStmt->iterator];
+
+  symbolTable[forStmt->iterator] = entryBlock.getArgument(0);
+
+
+
+
+  // Create the loop body
+  b.setInsertionPointToStart(&entryBlock);
   
-  assert(processStmtList(guardStmt->then).succeeded());
+  entryBlock.walk([&](mlir::AffineYieldOp op) { b.setInsertionPoint(op); });
   
-  b.setInsertionPointAfter(ifOp);
+  assert(processStmtList(forStmt->body).succeeded());
+  
+  b.setInsertionPointAfter(forOp);
+
+  // Restore the symbol value.
+  symbolTable[forStmt->iterator] = symValue;
+
+  // TODO: affine.parallel currently has more restrictions on what it can cover.
+  // So we don't create a parallel op at this stage.
+  if (forStmt->parallel)
+
+    forOp->setAttr("scop.parallelizable", b.getUnitAttr());
+
+
+
+
+  // Finally, we will move this affine.for op into a FuncOp if it uses values
+  // defined by affine.min/max as loop bound operands.
+  auto isMinMaxDefined = [](mlir::Value operand) {
+
+    return isa_and_nonnull<mlir::AffineMaxOp, mlir::AffineMinOp>(
+
+        operand.getDefiningOp());
+
+  };
+
+
+  
+
+  if (std::none_of(lbOperands.begin(), lbOperands.end(), isMinMaxDefined) &&
+      std::none_of(ubOperands.begin(), ubOperands.end(), isMinMaxDefined))
+
+    return success();
+
+
+
+
+  // Extract forOp out of the current block into a function.
+  Block *prevBlock = forOp->getBlock();
+  Block *currBlock = prevBlock->splitBlock(forOp);
+  Block *nextBlock = currBlock->splitBlock(forOp->getNextNode());
+
+  llvm::SetVector<mlir::Value> args;
+  inferBlockArgs(currBlock, args);
+
+
+
+  // Create the function body
+  mlir::FunctionType funcTy = b.getFunctionType(TypeRange(args.getArrayRef()), llvm::None);
+
+  b.setInsertionPoint(&*getFuncInsertPt());
+  
+  mlir::FuncOp func = b.create<mlir::FuncOp>(forOp->getLoc(), std::string("T") + std::to_string(numInternalFunctions), funcTy);
+
+  numInternalFunctions++;
+  
+  Block *newEntry = func.addEntryBlock();
+  
+  BlockAndValueMapping vMap;
+  
+  vMap.map(args, func.getArguments());
+  
+  b.setInsertionPointToStart(newEntry);
+  
+  b.clone(*forOp.getOperation(), vMap);
+  
+  b.create<mlir::func::ReturnOp>(func.getLoc(), llvm::None);
+
+
+
+  // Create function call.
+  b.setInsertionPointAfter(forOp);
+  
+  b.create<mlir::func::CallOp>(forOp.getLoc(), func, ValueRange(args.getArrayRef()));
+
+
+
+
+  // Clean up
+  forOp.erase();
+  
+  b.setInsertionPointToEnd(prevBlock);
+  
+  for (Operation &op : *currBlock)
+  
+    b.clone(op);
+  
+  for (Operation &op : *nextBlock)
+  
+    b.clone(op);
+  
+  currBlock->erase();
+  nextBlock->erase();
+
+
+
+  // Set the insertion point right before the terminator.
+  b.setInsertionPoint(&*std::prev(prevBlock->end()));
+
+
+  fclose(clast_for_output);
+
+
 
   return success();
 
-}
-
-
-
-
-
-/// F: Function to convert mlir::Type to std::string
-std::string typeToString(mlir::Type type) {
-  
-  std::string str;
-  llvm::raw_string_ostream os(str);
-  
-  type.print(os);
-  return os.str();
-
-}
-
-
-/// F: Function to convert mlir::Location to std::string
-std::string locationToString(mlir::Location loc) {
-  
-  std::string locStr;
-  llvm::raw_string_ostream locStream(locStr);
-  
-  loc.print(locStream);
-  
-  return locStream.str();
-
-}
-
-
-/// F: Function to print mlir::Value to string
-std::string valueToString(mlir::Value value) {
-  
-  std::string str;
-  llvm::raw_string_ostream os(str);
-  
-  value.print(os);
-  
-  return os.str();
-
-}
-
-
-/// F: Function to print mlir::Operation to string
-std::string operationToString(mlir::Operation* op) {
-
-  std::string str;
-  llvm::raw_string_ostream os(str);
-
-  op->print(os);
-
-  return os.str();
 
 }
 
@@ -1403,9 +1757,7 @@ std::string operationToString(mlir::Operation* op) {
 
 
 
-/// @brief Its taking mlir value type from oslSymbolTable actually its symbolTable which is inside initializeSymbolTable()
-/// @param val: mlir value
-/// @param j: json object
+
 void Importer::initializeSymbol(mlir::Value val, ordered_json &j) {
 
   assert(val != nullptr);
@@ -1681,249 +2033,6 @@ void Importer::initializeSymbol(mlir::Value val, ordered_json &j) {
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-LogicalResult Importer::processStmt(clast_assignment *ass) {
-
-  printf("inside assignement\n");
-
-  SmallVector<mlir::Value, 8> substOperands;
-
-  AffineMap substMap;
-
-  getAffineExprForLoopIterator((clast_stmt *)ass, substOperands, substMap);
-
-  mlir::Operation *op;
-
-
-  if (substMap.isSingleConstant()) {
-
-    op = b.create<mlir::arith::ConstantOp>(b.getUnknownLoc(), b.getIndexType(), b.getIntegerAttr(b.getIndexType(), substMap.getSingleConstantResult()));
-
-  } 
-  
-  else if (substMap.getNumResults() == 1) {
-
-    op = b.create<mlir::AffineApplyOp>(b.getUnknownLoc(), substMap,
-                                       substOperands);
-  } 
-  
-  else {
-
-    assert(ass->RHS->type == clast_expr_red);
-
-    clast_reduction *red = reinterpret_cast<clast_reduction *>(ass->RHS);
-
-    assert(red->type != clast_red_sum);
-
-    if (red->type == clast_red_max)
-
-      op = b.create<mlir::AffineMaxOp>(b.getUnknownLoc(), substMap, substOperands);
-
-    else
-      
-      op = b.create<mlir::AffineMinOp>(b.getUnknownLoc(), substMap, substOperands);
-  
-  }
-
-  assert(op->getNumResults() == 1);
-  
-  symbolTable[ass->LHS] = op->getResult(0);
-  
-  lhsToAss[ass->LHS] = (clast_stmt *)ass;
-  
-  return success();
-
-}
-
-
-
-/// Generate the AffineForOp from a clast_for statement. First we create
-/// AffineMaps for the lower and upper bounds. Then we decide the step if
-/// there is any. And finally, we create the AffineForOp instance and generate
-/// its body.
-LogicalResult Importer::processStmt(clast_for *forStmt) {
-
-  printf("inside forstmt\n");
-
-
-  /// Get loop bounds.
-  AffineMap lbMap, ubMap;
-
-
-  /// The actual size of each cell in memory depends on the size of the mlir::Value type
-  /// It allocates a fixed amount of space for a small number of elements and only falls back to heap allocation if that space is exceeded
-  llvm::SmallVector<mlir::Value, 8> lbOperands, ubOperands;
-  
-
-  assert((forStmt->LB && forStmt->UB) && "Unbounded loops are not allowed.");
-
-  // TODO: simplify these sanity checks.
-  assert(!(forStmt->LB->type == clast_expr_red &&
-           reinterpret_cast<clast_reduction *>(forStmt->LB)->type == clast_red_min) &&
-         "If the lower bound is a reduced result, it should not use min for reduction.");
-
-  assert(!(forStmt->UB->type == clast_expr_red &&
-           reinterpret_cast<clast_reduction *>(forStmt->UB)->type == clast_red_max) &&
-         "If the upper bound is a reduced result, it should not use max for reduction.");
-
-
-  if (failed(getAffineLoopBound(forStmt->LB, lbOperands, lbMap)) ||
-      failed(getAffineLoopBound(forStmt->UB, ubOperands, ubMap, /*isUpper=*/true)))
-
-    return failure();
-
-  int64_t stride = 1;
-
-  if (cloog_int_gt_si(forStmt->stride, 1)) {
-
-    if (failed(getI64(forStmt->stride, &stride)))
-
-      return failure();
-
-  }
-
-
-
-  // Create the for operation.
-  mlir::AffineForOp forOp = b.create<mlir::AffineForOp>(UnknownLoc::get(context), lbOperands, lbMap, ubOperands, ubMap, stride);
-
-
-  // Update the loop IV mapping.
-  auto &entryBlock = *forOp.getLoopBody().getBlocks().begin();
-  
-  // TODO: confirm is there a case that forOp has multiple operands.
-  assert(entryBlock.getNumArguments() == 1 && "affine.for should only have one block argument (iv).");
-
-  symTable->setValue(forStmt->iterator, entryBlock.getArgument(0), OslSymbolTable::LoopIV);
-
-  // Symbol table is mutable.
-  // TODO: is there a better way to improve this? Not very safe.
-  mlir::Value symValue = symbolTable[forStmt->iterator];
-
-  symbolTable[forStmt->iterator] = entryBlock.getArgument(0);
-
-
-
-
-  // Create the loop body
-  b.setInsertionPointToStart(&entryBlock);
-  
-  entryBlock.walk([&](mlir::AffineYieldOp op) { b.setInsertionPoint(op); });
-  
-  assert(processStmtList(forStmt->body).succeeded());
-  
-  b.setInsertionPointAfter(forOp);
-
-  // Restore the symbol value.
-  symbolTable[forStmt->iterator] = symValue;
-
-  // TODO: affine.parallel currently has more restrictions on what it can cover.
-  // So we don't create a parallel op at this stage.
-  if (forStmt->parallel)
-
-    forOp->setAttr("scop.parallelizable", b.getUnitAttr());
-
-  // Finally, we will move this affine.for op into a FuncOp if it uses values
-  // defined by affine.min/max as loop bound operands.
-  auto isMinMaxDefined = [](mlir::Value operand) {
-
-    return isa_and_nonnull<mlir::AffineMaxOp, mlir::AffineMinOp>(
-
-        operand.getDefiningOp());
-
-  };
-
-  if (std::none_of(lbOperands.begin(), lbOperands.end(), isMinMaxDefined) &&
-      std::none_of(ubOperands.begin(), ubOperands.end(), isMinMaxDefined))
-
-    return success();
-
-
-
-
-  // Extract forOp out of the current block into a function.
-  Block *prevBlock = forOp->getBlock();
-  Block *currBlock = prevBlock->splitBlock(forOp);
-  Block *nextBlock = currBlock->splitBlock(forOp->getNextNode());
-
-  llvm::SetVector<mlir::Value> args;
-  inferBlockArgs(currBlock, args);
-
-
-
-  // Create the function body
-  mlir::FunctionType funcTy = b.getFunctionType(TypeRange(args.getArrayRef()), llvm::None);
-
-  b.setInsertionPoint(&*getFuncInsertPt());
-  
-  mlir::FuncOp func = b.create<mlir::FuncOp>(forOp->getLoc(), std::string("T") + std::to_string(numInternalFunctions), funcTy);
-
-  numInternalFunctions++;
-  
-  Block *newEntry = func.addEntryBlock();
-  
-  BlockAndValueMapping vMap;
-  
-  vMap.map(args, func.getArguments());
-  
-  b.setInsertionPointToStart(newEntry);
-  
-  b.clone(*forOp.getOperation(), vMap);
-  
-  b.create<mlir::func::ReturnOp>(func.getLoc(), llvm::None);
-
-
-
-  // Create function call.
-  b.setInsertionPointAfter(forOp);
-  
-  b.create<mlir::func::CallOp>(forOp.getLoc(), func, ValueRange(args.getArrayRef()));
-
-
-
-
-  // Clean up
-  forOp.erase();
-  
-  b.setInsertionPointToEnd(prevBlock);
-  
-  for (Operation &op : *currBlock)
-  
-    b.clone(op);
-  
-  for (Operation &op : *nextBlock)
-  
-    b.clone(op);
-  
-  currBlock->erase();
-  nextBlock->erase();
-
-
-
-  // Set the insertion point right before the terminator.
-  b.setInsertionPoint(&*std::prev(prevBlock->end()));
-
-  return success();
-
-
-
-}
-
-
 void Importer::initializeSymbolTable() {
 
   OslScop::SymbolTable *oslSymbolTable = scop->getSymbolTable();
@@ -2012,9 +2121,6 @@ void Importer::initializeSymbolTable() {
 
 
 
-
-
-
 /// If there is anything in the comment, we will use it as a function name.
 /// Otherwise, we return an empty string.
 std::string Importer::getSourceFuncName(ordered_json &j) const {
@@ -2058,6 +2164,7 @@ std::string Importer::getSourceFuncName(ordered_json &j) const {
   return std::string("");
 
 }
+
 
 
 
@@ -2226,7 +2333,11 @@ void Importer::initializeFuncOpInterface() {
 /// default "main".
 LogicalResult Importer::processStmt(clast_root *rootStmt) {
   
-  printf("inside rootstmt\n");
+  /// F: My snitch
+  printf("[processStmt clast_root *rootstmt] I AM HIT=====================\n");
+
+  trace["processStmt(clast_root *rootStmt)"] = "Start of the rootStmt for creating the funcOp box";
+
   // Create the function.
   initializeFuncOpInterface();
   
@@ -2243,83 +2354,133 @@ LogicalResult Importer::processStmt(clast_root *rootStmt) {
 
 LogicalResult Importer::processStmtList(clast_stmt *s) {
 
-  FILE *rootStmt_dump = fopen("output-files/rootStmt.txt", "w");
+  /// Declare a file pointer and also some necessary variables
+  FILE *rootStmt_dump = fopen("output-files/rootStmt.txt", "w+");
+  char file_contents[1000];
+  
 
-  // Loop through each statement in the linked list until the end (NULL)
+
+  /// Check if the file is opened successfully
+  if (!rootStmt_dump) {
+
+    std::cerr << "Failed to open file for writing.\n";
+    return failure();
+  
+  }
+
+
+
+  /// Loop through each statement in the linked list until the end (NULL)
   for (; s; s = s->next) {
     
-
-
-    // Check if the current statement is of type 'stmt_root'
+    /// Check if the current statement is of type 'stmt_root'
     if (CLAST_STMT_IS_A(s, stmt_root)) {
       
-      clast_pprint(rootStmt_dump, s, 0, options);
-      
-      // Process the statement and check for failure
-      if (failed(processStmt(reinterpret_cast<clast_root *>(s))))
-
-        // Return a failure result if processing failed
-        return failure();
-
-
-
-
-
-    } else if (CLAST_STMT_IS_A(s, stmt_for)) {
-      
-      
+        /// Dump the clast in a file
         clast_pprint(rootStmt_dump, s, 0, options);
 
-        // Same process for a 'stmt_for' (a for loop statement)
-        if (failed(processStmt(reinterpret_cast<clast_for *>(s))))
-    
-          return failure();
 
+        /// Close the file after writing
+        fclose(rootStmt_dump);
 
+        /// Reopen the file in read mode
+        rootStmt_dump = fopen("output-files/rootStmt.txt", "r");
 
+        /// Read the contents of file and print in console
+        printf("Clast is printing from stmt_root\n");
+        if (rootStmt_dump != NULL) {
 
-    } else if (CLAST_STMT_IS_A(s, stmt_ass)) {
+          printf("Counter: %d\n", counter);
+          while(fgets(file_contents, 1000, rootStmt_dump)) 
 
-      
-        // Same process for a statement of type 'stmt_ass' (an assignment statement)
-        if (failed(processStmt(reinterpret_cast<clast_assignment *>(s))))
+            printf("%s", file_contents);
+
+          /// Clearing the array 
+          file_contents[0] = '\0';
+          counter++;
+
+        }
+        printf("Clast printing from stmt_root done==============\n");
+        /// Process the statement and check for failure
+        if (failed(processStmt(reinterpret_cast<clast_root *>(s))))
 
           // Return a failure result if processing failed
           return failure();
 
 
 
+    } else if (CLAST_STMT_IS_A(s, stmt_for)) {
+
+
+        /// Dump the clast in a file
+        clast_pprint(rootStmt_dump, s, 0, options);
+
+
+        /// Close the file after writing
+        fclose(rootStmt_dump);
+
+        /// Reopen the file in read mode
+        rootStmt_dump = fopen("output-files/rootStmt.txt", "r");
+
+        /// Read the contents of file and print in console
+        printf("Clast is printing from stmt_for\n");
+        if (rootStmt_dump != NULL) {
+
+          printf("Counter: %d\n", counter);
+          while(fgets(file_contents, 1000, rootStmt_dump)) 
+
+            printf("%s", file_contents);
+
+          file_contents[0] = '\0';
+          counter++;
+
+        }
+        printf("Clast printing from stmt_for done==============\n");
+
+        // Same process for a 'stmt_for' (a for loop statement)
+        if (failed(processStmt(reinterpret_cast<clast_for *>(s))))
+
+          return failure();
+      
     
     } else if (CLAST_STMT_IS_A(s, stmt_user)) {
 
+        /// Dump the clast in a file
+        clast_pprint(rootStmt_dump, s, 0, options);
 
-      clast_pprint(rootStmt_dump, s, 0, options);
 
-      
-      // Same process for a statement of type 'stmt_user'
-      if (failed(processStmt(reinterpret_cast<clast_user_stmt *>(s))))
+        /// Close the file after writing
+        fclose(rootStmt_dump);
+
+        /// Reopen the file in read mode
+        rootStmt_dump = fopen("output-files/rootStmt.txt", "r");
+
+        /// Read the contents of file and print in console
+        printf("Clast is printing from stmt_user\n");
+        if (rootStmt_dump != NULL) {
+
+          printf("Counter: %d\n", counter);
+          while(fgets(file_contents, 1000, rootStmt_dump)) 
+
+            printf("%s", file_contents);
+
+          file_contents[0] = '\0';
+          counter++;
+
+        }
+        printf("Clast printing from stmt_user done==============\n");
+
+        // Same process for a statement of type 'stmt_user'
+        if (failed(processStmt(reinterpret_cast<clast_user_stmt *>(s))))
+    
+          return failure();
+
   
-        return failure();
-  
-
-
-
-
-    } else if (CLAST_STMT_IS_A(s, stmt_guard)) {
-      
-      // Same process for a 'stmt_guard' (a conditional guard statement)
-      if (failed(processStmt(reinterpret_cast<clast_guard *>(s))))
-  
-        return failure();
-
-
-
-
     } else {
 
-      // If the statement is not recognized, assert failure (crash)
-      assert(false && "clast_stmt type not supported");
-  
+        // If the statement is not recognized, assert failure (crash)
+        assert(false && "clast_stmt type not supported");
+    
     }
   
   } // for ends here
@@ -2330,9 +2491,6 @@ LogicalResult Importer::processStmtList(clast_stmt *s) {
   return success();
 
 }
-
-
-
 
 
 
@@ -2404,14 +2562,11 @@ static void unrollJamClastByPlutoProg(clast_stmt *root,
 
 
 
-
 static void markParallel(clast_stmt *root, const PlutoProg *prog, CloogOptions *cloogOptions) {
   
   pluto_mark_parallel(root, prog, cloogOptions);
 
 }
-
-
 
 
 
@@ -2433,9 +2588,6 @@ static void transformClastByPlutoProg(clast_stmt *root,
 
 
 
-/// @brief Updating Options of cloog by the options of Pluto prog
-/// @param options : It is the pointer to cloog options
-/// @param prog : It is the pointer to pluto prog
 static void updateCloogOptionsByPlutoProg(CloogOptions *options, const PlutoProg *prog) {
 
   Stmt **stmts = prog->stmts;
@@ -2485,92 +2637,61 @@ static void updateCloogOptionsByPlutoProg(CloogOptions *options, const PlutoProg
 
 
 
-
+/// @brief: Below this point all things belongs to polymer  
 
 mlir::Operation *polymer::createFuncOpFromOpenScop(std::unique_ptr<OslScop> scop, ModuleOp module, OslSymbolTable &symTable,
                                                   MLIRContext *context, PlutoProg *prog, const char *dumpClastAfterPluto) {
   
-  /// F:
-  FILE *cloogOutFromScop = fopen("cloog_from_scop.cloog", "w");
-  FILE *cloogProgram = fopen("program_from_cloog.txt", "w");
-  FILE *clastPrintFile = fopen("clast_from_program.txt", "w");
+  
+  std::cout << "create Func OP.\n" << std::endl;
 
 
-
-  /// Inputs printing to console
-  /// scop printing
-  std::printf("Printing scop from createFuncOpFromOpenScop()\n");
-  scop->print();
-
-  // /// modoule printing
-  // std::printf("Printing mlir::moduleOp from createFuncOpFromOpenScop()");
-  // // LLVM_DEBUG(module.dump());
-
-
+  FILE *CloogOut = fopen("output-files/1. scop_to_cloog.cloog", "w");
+  FILE *ProgramOut = fopen("output-files/2. cloog_to_program.txt", "w");
+  FILE *ClastOut = fopen("output-files/3. program_to_clast.txt", "w");
+  // FILE *scop_file = fopen("scop_file.txt", "w");
+  // FILE *options1 = fopen("options.txt", "w");
 
 
   // TODO: turn these C struct into C++ classes.
-  CloogState *state = cloog_state_malloc();  /// sets the cloog state
-
-  /// Its like a big box with tiny little box for many things needed for cloog
-  CloogOptions *options = cloog_options_malloc(state); /// cloog state is stored in options state. And there are more other options sets
+  CloogState *state = cloog_state_malloc();
+  CloogOptions *options = cloog_options_malloc(state);
 
   options->openscop = 1; // The input file in the OpenScop format
   options->scop = scop->get(); // Get the raw scop pointer
 
-
-
-  /// Generates a cloog input from Openscop data. This function translates an OpenScop scop to a CLooG input.
+  // THIS is the culprit
   CloogInput *input = cloog_input_from_osl_scop(options->state, scop->get());
 
-
-  /// This function extracts CLooG option values from an OpenScop scop and
-  /// updates an existing CloogOption structure with those values. If the
-  /// options were already set, they are updated without warning. -- function Def path: ./pluto/cloog-isl/source/options.c
   cloog_options_copy_from_osl_scop(scop->get(), options);
   
   
   
-  ///F: +++++++++++++++++++++CLOOG contents printing+++++++++++++++++++
-  cloog_input_dump_cloog(cloogOutFromScop, input, options);
+  //+++++++++++++++++++++CLOOG contents printing+++++++++++++++++++
+  cloog_input_dump_cloog(CloogOut, input, options);
 
   
   
   
-  if (prog != nullptr) {
+  if (prog != nullptr)
     
-    /// F: Snitch
-    std::printf("=======================prog is not null=====================\n");
-    
-    
-    /// This is function from polymer defined in this script somewhere top
     updateCloogOptionsByPlutoProg(options, prog);
-  
-  
-  }
 
-
-
-
-
-
-  /// Construct a CloogProgram structure from a given context and
-  /// union domain representing the iteration domains and scattering functions.
+  // Create cloog_program
   CloogProgram *program = cloog_program_alloc(input->context, input->ud, options);
   
   assert(program->loop);
 
   
-  /// F: generates a structure like from cloog
   program = cloog_program_generate(program, options);
-  
-  /// F: +++++++++++++++++++Print Program+++++++++++++++++++++++++++++++++++
-  cloog_program_print(cloogProgram, program);
+
+
+
+  // +++++++++++++++++++Print Program+++++++++++++++++++++++++++++++++++
+  cloog_program_print(ProgramOut, program);
 
   
-
-
-
+  
   
   if (!program->loop) {
   
@@ -2585,28 +2706,16 @@ mlir::Operation *polymer::createFuncOpFromOpenScop(std::unique_ptr<OslScop> scop
   // Convert to clast
   clast_stmt *rootStmt = cloog_clast_create(program, options);
 
-
   
   assert(rootStmt);
-
-
-
+  
   if (prog != nullptr)
     
     transformClastByPlutoProg(rootStmt, prog, options, prog->context->options);
 
-
-
-
-
-
-
-
   FILE *clastPrintFile_1 = stderr;
+  
   if (dumpClastAfterPluto) {
-
-    /// F: Snitch
-    std::printf("===========================dumpClastAfterPluto is not empty!!!===========================\n");
   
     clastPrintFile_1 = fopen(dumpClastAfterPluto, "w");
 
@@ -2620,30 +2729,16 @@ mlir::Operation *polymer::createFuncOpFromOpenScop(std::unique_ptr<OslScop> scop
 
 
 
-
-
-
-
   // +++++++++++++++++Print clast+++++++++++++++++++++++++++
-  clast_pprint(clastPrintFile, rootStmt, 0, options);
+  clast_pprint(ClastOut, rootStmt, 0, options);
 
 
 
-
-
-
-
-  /// Pass inputs to the Importer class. deseralizer is the instance of Importer class
-  /// Deserialising also non as converting
+  // Process the input.
   Importer deserializer(context, module, &symTable, scop.get(), options);
   
   if (failed(deserializer.processStmtList(rootStmt)))
     return nullptr;
-
-
-
-
-
 
   // Cannot use cloog_input_free, some pointers don't exist.
   free(input);
@@ -2655,15 +2750,14 @@ mlir::Operation *polymer::createFuncOpFromOpenScop(std::unique_ptr<OslScop> scop
 
 
 
-  fclose(cloogOutFromScop);
-  fclose(cloogProgram);
-  fclose(clastPrintFile);
+  fclose(CloogOut);
+  fclose(ProgramOut);
+  fclose(ClastOut);
   
 
   return deserializer.getFunc();
 
 }
-
 
 
 
@@ -2681,6 +2775,8 @@ mlir::Operation *polymer::createFuncOpFromOpenScop(std::unique_ptr<OslScop> scop
  */
 OwningOpRef<ModuleOp> polymer::translateOpenScopToModule(std::unique_ptr<OslScop> scop, MLIRContext *context) {
   
+
+  std::cout << "translate openscope to module of polymer.\n" << std::endl;
 
   // Load the Affine dialect into the MLIR context. Dialects are collections of operations, types, and attributes
   // necessary for the generation and optimization of MLIR modules
@@ -2742,6 +2838,8 @@ OwningOpRef<ModuleOp> polymer::translateOpenScopToModule(std::unique_ptr<OslScop
  */
 static OwningOpRef<ModuleOp> translateOpenScopToModule(llvm::SourceMgr &sourceMgr, MLIRContext *context) {
 
+  std::cout << "translate openscope to module.\n" << std::endl;
+
 
   // Declare an llvm::SMDiagnostic object to hold any diagnostic messages (like errors)
   // that may occur during the operations within this function
@@ -2765,26 +2863,38 @@ static OwningOpRef<ModuleOp> translateOpenScopToModule(llvm::SourceMgr &sourceMg
 
 
 
-
+/// @brief polymer namespace
 namespace polymer {
 
-void registerFromOpenScopTranslation() {
+  /**
+   * @brief: This function is responsible for registering a translation from an OpenScop representation to an 
+   * MLIR (Multi-Level Intermediate Representation) module. The translation is registered with a specific name 
+   * ("import-scop") and implemented using a lambda function.
+   *
+   * In other words, when you register a translation, you inform the MLIR framework about a new function or process that 
+   * can convert data from one format to another. This function is identified by a specific name (in this case, "import-scop").
+   */
+  void registerFromOpenScopTranslation() {
+    
+    // std::cout << "Data has been dumped to data_v_2.json successfully.\n" << std::endl;
 
-  
+    // Create a registration object for the translation
+    // "import-scop" is the name used to identify this translation within the MLIR framework
+    TranslateToMLIRRegistration fromLLVM(
+    
+        "import-scop", 
 
-  TranslateToMLIRRegistration fromLLVM(
-  
-      "import-scop", [](llvm::SourceMgr &sourceMgr, MLIRContext *context) {  //lambda function: [], C++ allow for anonymous functions inline
+        /// This is a lambda function (an anonymous function defined inline)
+        [](llvm::SourceMgr &sourceMgr, MLIRContext *context) {  
 
-        return ::translateOpenScopToModule(sourceMgr, context); // :: is scope resolution operator indicates that func is defined in global namespace
-  
-      }
-  
-  );
+          /// This lambda function calls 'translateOpenScopToModule' to perform the actual translation
+          /// The '::' scope resolution operator indicates that 'translateOpenScopToModule' is defined in the global namespace
+          return ::translateOpenScopToModule(sourceMgr, context); 
+    
+        }
+    
+    );
 
-  
-
-
-}
+  }
 
 } // namespace polymer
