@@ -2245,7 +2245,7 @@ LogicalResult Importer::processStmtList(clast_stmt *s) {
   /// Helper function to process a statement and update JSON
   auto processAndLogStmt = [&](clast_stmt *stmt, const std::string &stmtType) -> LogicalResult {
   
-    rootStmt_dump = fopen("output-files/4.rootStmt.txt", "w+");
+    rootStmt_dump = fopen("output-files/1.polymer-commit-bda08-funcOp/4.rootStmt.txt", "w+");
     if (!rootStmt_dump) {
   
       std::cerr << "Failed to open file for writing.\n";
@@ -2258,7 +2258,7 @@ LogicalResult Importer::processStmtList(clast_stmt *s) {
     fclose(rootStmt_dump);
 
     /// Open the file in read mode
-    rootStmt_dump = fopen("output-files/4.rootStmt.txt", "r");
+    rootStmt_dump = fopen("output-files/1.polymer-commit-bda08-funcOp/4.rootStmt.txt", "r");
     if (!rootStmt_dump) {
       std::cerr << "Failed to open file for reading.\n";
       return failure();
@@ -2326,7 +2326,7 @@ LogicalResult Importer::processStmtList(clast_stmt *s) {
   }
 
   /// Write JSON trace to a file
-  std::ofstream o("output-files/data.json");
+  std::ofstream o("output-files/1.polymer-commit-bda08-funcOp/data.json");
   
   if (!o.is_open()) {
   
@@ -2498,9 +2498,9 @@ mlir::Operation *polymer::createFuncOpFromOpenScop(std::unique_ptr<OslScop> scop
   std::cout << "create Func OP.\n" << std::endl;
 
 
-  FILE *CloogOut = fopen("output-files/1. scop_to_cloog.cloog", "w");
-  FILE *ProgramOut = fopen("output-files/2. cloog_to_program.txt", "w");
-  FILE *ClastOut = fopen("output-files/3. program_to_clast.txt", "w");
+  FILE *CloogOut = fopen("output-files/1.polymer-commit-bda08-funcOp/1. scop_to_cloog.cloog", "w");
+  FILE *ProgramOut = fopen("output-files/1.polymer-commit-bda08-funcOp/2. cloog_to_program.txt", "w");
+  FILE *ClastOut = fopen("output-files/1.polymer-commit-bda08-funcOp/3. program_to_clast.txt", "w");
   // FILE *scop_file = fopen("scop_file.txt", "w");
   // FILE *options1 = fopen("options.txt", "w");
 

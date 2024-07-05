@@ -6,18 +6,18 @@
         "initializeFuncOpInterface()": {
             "oslValueTable": {
                 "<block argument> of type 'index' at index: 0": [
-                    "i2",
                     "i1",
+                    "i2",
                     "i0"
+                ],
+                "%1 = memref.alloc() : memref<64x64xf32>": [
+                    "A2"
                 ],
                 "%0 = memref.alloc() : memref<64x64xf32>": [
                     "A1"
                 ],
                 "%2 = memref.alloc() : memref<64x64xf32>": [
                     "A3"
-                ],
-                "%1 = memref.alloc() : memref<64x64xf32>": [
-                    "A2"
                 ]
             },
             "getSourceFuncOp()": {
