@@ -1,0 +1,93 @@
+{
+    "processStmt(clast_root *rootStmt)": {
+        "Input": {
+            "1": "for (t1=0;t1<=1;t1++) {\n  for (t2=0;t2<=1;t2++) {\n    for (t3=0;t3<=1;t3++) {\n      for (t4=32*t1;t4<=32*t1+31;t4++) {\n        for (t5=32*t3;t5<=32*t3+31;t5++) {\n          for (t6=32*t2;t6<=32*t2+31;t6++) {\n            S0(t4, t6, t5)\n          }\n        }\n      }\n    }\n  }\n}\n"
+        },
+        "initializeFuncOpInterface()": {
+            "oslValueTable": {
+                "<block argument> of type 'index' at index: 0": [
+                    "i2",
+                    "i1",
+                    "i0"
+                ],
+                "%0 = memref.alloc() : memref<64x64xf32>": [
+                    "A1"
+                ],
+                "%2 = memref.alloc() : memref<64x64xf32>": [
+                    "A3"
+                ],
+                "%1 = memref.alloc() : memref<64x64xf32>": [
+                    "A2"
+                ]
+            },
+            "getSourceFuncOp()": {
+                "sourceFuncName": "matmul",
+                "sourceFuncOp": "func @matmul() {\n  %0 = memref.alloc() : memref<64x64xf32>\n  %1 = memref.alloc() : memref<64x64xf32>\n  %2 = memref.alloc() : memref<64x64xf32>\n  affine.for %arg0 = 0 to 64 {\n    affine.for %arg1 = 0 to 64 {\n      affine.for %arg2 = 0 to 64 {\n        call @S0(%arg0, %arg1, %2, %arg2, %1, %0) : (index, index, memref<64x64xf32>, index, memref<64x64xf32>, memref<64x64xf32>) -> ()\n      }\n    }\n  }\n  return\n}"
+            },
+            "FuncOp class or Ops: object instantiation needs input": {
+                "sourceFuncOp.getLoc()": "loc(\"test/archive/PlutoTransform/matmul.mlir\":5:1)",
+                "function name": [
+                    "matmul_opt"
+                ],
+                "sourceFuncOp.getType()": [
+                    "() -> ()"
+                ]
+            }
+        },
+        "New funcOp after initializeFuncOpInterface() processes": "func @matmul_opt() {\n  return\n}",
+        "initializeSymbolTable()": {
+            "oslSymbolTable": {
+                "A1": [
+                    "%0 = memref.alloc() : memref<64x64xf32>"
+                ],
+                "A2": [
+                    "%1 = memref.alloc() : memref<64x64xf32>"
+                ],
+                "A3": [
+                    "%2 = memref.alloc() : memref<64x64xf32>"
+                ],
+                "i0": [
+                    "<block argument> of type 'index' at index: 0"
+                ],
+                "i1": [
+                    "<block argument> of type 'index' at index: 0"
+                ],
+                "i2": [
+                    "<block argument> of type 'index' at index: 0"
+                ]
+            },
+            "initializeSymbol(mlir::Value val)": {
+                "defOp": [
+                    "%0 = memref.alloc() : memref<64x64xf32>",
+                    "%1 = memref.alloc() : memref<64x64xf32>",
+                    "%2 = memref.alloc() : memref<64x64xf32>"
+                ],
+                "parentOp": [
+                    "func @matmul() {\n  %0 = memref.alloc() : memref<64x64xf32>\n  %1 = memref.alloc() : memref<64x64xf32>\n  %2 = memref.alloc() : memref<64x64xf32>\n  affine.for %arg0 = 0 to 64 {\n    affine.for %arg1 = 0 to 64 {\n      affine.for %arg2 = 0 to 64 {\n        call @S0(%arg0, %arg1, %2, %arg2, %1, %0) : (index, index, memref<64x64xf32>, index, memref<64x64xf32>, memref<64x64xf32>) -> ()\n      }\n    }\n  }\n  return\n}",
+                    "func @matmul() {\n  %0 = memref.alloc() : memref<64x64xf32>\n  %1 = memref.alloc() : memref<64x64xf32>\n  %2 = memref.alloc() : memref<64x64xf32>\n  affine.for %arg0 = 0 to 64 {\n    affine.for %arg1 = 0 to 64 {\n      affine.for %arg2 = 0 to 64 {\n        call @S0(%arg0, %arg1, %2, %arg2, %1, %0) : (index, index, memref<64x64xf32>, index, memref<64x64xf32>, memref<64x64xf32>) -> ()\n      }\n    }\n  }\n  return\n}",
+                    "func @matmul() {\n  %0 = memref.alloc() : memref<64x64xf32>\n  %1 = memref.alloc() : memref<64x64xf32>\n  %2 = memref.alloc() : memref<64x64xf32>\n  affine.for %arg0 = 0 to 64 {\n    affine.for %arg1 = 0 to 64 {\n      affine.for %arg2 = 0 to 64 {\n        call @S0(%arg0, %arg1, %2, %arg2, %1, %0) : (index, index, memref<64x64xf32>, index, memref<64x64xf32>, memref<64x64xf32>) -> ()\n      }\n    }\n  }\n  return\n}"
+                ],
+                "func": [
+                    "func @matmul_opt() {\n  %0 = memref.alloc() : memref<64x64xf32>\n  %c0 = arith.constant 0 : index\n  return\n}",
+                    "func @matmul_opt() {\n  %0 = memref.alloc() : memref<64x64xf32>\n  %1 = memref.alloc() : memref<64x64xf32>\n  %c0 = arith.constant 0 : index\n  return\n}",
+                    "func @matmul_opt() {\n  %0 = memref.alloc() : memref<64x64xf32>\n  %1 = memref.alloc() : memref<64x64xf32>\n  %2 = memref.alloc() : memref<64x64xf32>\n  %c0 = arith.constant 0 : index\n  return\n}"
+                ]
+            },
+            "symbolTable": {
+                "zero": [
+                    "%c0 = arith.constant 0 : index"
+                ],
+                "A1": [
+                    "%2 = memref.alloc() : memref<64x64xf32>"
+                ],
+                "A2": [
+                    "%1 = memref.alloc() : memref<64x64xf32>"
+                ],
+                "A3": [
+                    "%0 = memref.alloc() : memref<64x64xf32>"
+                ]
+            }
+        },
+        "New funcOp after initializeSymbolTable() processes": "func @matmul_opt() {\n  %0 = memref.alloc() : memref<64x64xf32>\n  %1 = memref.alloc() : memref<64x64xf32>\n  %2 = memref.alloc() : memref<64x64xf32>\n  %c0 = arith.constant 0 : index\n  return\n}"
+    }
+}

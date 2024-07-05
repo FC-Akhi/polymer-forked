@@ -83,7 +83,7 @@ static void sanityCheckDomain(FlatAffineValueConstraints &dom) {
 
 
 
-
+/// 2. NEED TO TRACE DOWN
 /// Build OslScop from a given FuncOp.
 std::unique_ptr<OslScop> OslScopBuilder::build(mlir::FuncOp f) {
 
@@ -180,7 +180,7 @@ std::unique_ptr<OslScop> OslScopBuilder::build(mlir::FuncOp f) {
 
 
 
-/// 2. NEED TO TRACE DOWN
+
 /// Find all statements that calls a scop.stmt.
 void OslScopBuilder::buildScopStmtMap(mlir::FuncOp f,
                                       OslScop::ScopStmtNames *scopStmtNames,

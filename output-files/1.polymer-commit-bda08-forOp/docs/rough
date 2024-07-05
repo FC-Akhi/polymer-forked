@@ -1,0 +1,236 @@
+1. registerPlutoTransformPass Function
+    
+    Purpose: Registers a custom optimization pass pipeline for the MLIR framework named "pluto-opt."
+    Pipeline Name: "pluto-opt"
+    Passes Added:
+        - DedupIndexCastPass
+        - CanonicalizerPass
+        - PlutoTransformPass
+        - PlutoParallelizePass (conditionally)
+
+    
+    - DedupIndexCastPass:
+        
+        Purpose:  Inherits from mlir::PassWrapper and operates on mlir::FuncOp.
+        Overridden to call: dedupIndexCast Function on the current mlir::FuncOp.
+            
+            dedupIndexCast Function:
+                
+                Purpose: Removes duplicate index_cast operations within a given mlir::FuncOp.
+                Description: Iterates through the blocks and operations in the function to find and eliminate duplicate index_cast operations.
+
+
+
+    - PlutoTransformPass:
+    
+        Purpose:  Inherits from mlir::PassWrapper and operates on mlir::ModuleOp.
+        Member Variables: Stores configuration options for the Pluto transformation.
+        Constructors: Initializes the pass with default values, copied values, or specific configuration options.
+        Overridden to call:  Pluto transformation Function on the functions within the module.
+        
+            plutoTransform Function:
+                
+                Purpose: Applies the Pluto transformation to a given mlir::FuncOp
+                Description:
+                            Allocates a Pluto context and creates an OpenScop representation from the function using createOpenScopFromFuncOp().
+                            
+                            Configures Pluto context options.
+                            
+                            Schedules and populates the scop using Pluto.
+                            
+                            Converts the transformed OpenScop back into an mlir::FuncOp using createFuncOpFromOpenScop().
+
+                            Returns the transformed function.
+                            
+                            
+                            
+                            
+                            
+                More details 
+                        Input:
+                        
+                        Function Parameters:
+                            mlir::FuncOp f: The function operation to be transformed.
+                            OpBuilder &rewriter: An operation builder to help with creating new operations.
+                            std::string dumpClastAfterPluto: A string specifying the file to dump CLAST after Pluto transformation.
+                            bool parallelize = false: A flag indicating whether to apply parallelization.
+                            bool debug = false: A flag for enabling debugging.
+                            int cloogf = -1: An integer specifying the starting depth of CLooG fusion.
+                            int cloogl = -1: An integer specifying the ending depth of CLooG fusion.
+                            bool diamondTiling = false: A flag for enabling diamond tiling.
+                        
+                        Process:
+                            - Debug Information:
+
+                                Input:
+                                mlir::FuncOp f
+
+                                Operations:
+                                Print debug messages indicating the start of the Pluto transformation.
+                                Dump the function f for debugging purposes.
+                                Print a message "mlir::FuncOp is dumped!!!".
+
+                                Output:
+                                Debug information printed to the console.
+
+
+
+                            - Pluto Context Allocation:
+
+                                Input:
+                                None
+                                
+                                Operations:
+                                Allocate a Pluto context using pluto_context_alloc.
+                                Initialize source and destination symbol tables (OslSymbolTable srcTable, OslSymbolTable dstTable).
+                                
+                                Output:
+                                A new Pluto context and initialized symbol tables.
+                        
+                        
+                        
+                            - Create OpenScop from Function:
+
+                                Input:
+                                mlir::FuncOp f
+                                OslSymbolTable srcTable
+                                
+                                Operations:
+                                Create an OpenScop representation from the function f using createOpenScopFromFuncOp(f, srcTable).
+                                
+                                Conditions:
+                                If the scop is not created successfully or has zero statements, return nullptr.
+                                
+                                Output:
+                                A unique pointer to OslScop if successful, or nullptr if not.
+    
+    
+    
+                           - Configure Pluto Context:
+
+                                Input:
+                                bool debug
+                                bool parallelize
+                                int cloogf
+                                int cloogl
+                                bool diamondTiling
+                                Pluto context (context)
+                                
+                                Operations:
+                                Set various options in the Pluto context based on input parameters.
+                                Configure debug, parallelization, tiling, and fusion settings.
+                                
+                                Output:
+                                A configured Pluto context.
+                        
+                        
+                        
+                        
+                        
+                            - Print Scop Information:
+
+                                Input:
+                                OslScop pointer (scop)
+                                
+                                Operations:
+                                Print the scop information to the standard error output.
+                                
+                                Output:
+                                Scop information printed to stderr.
+                            
+                            
+                            
+                            - Pluto Transformation:
+
+                                Input:
+                                OslScop pointer (scop)
+                                Pluto context (context)
+                                
+                                Operations:
+                                Convert the OpenScop to a Pluto program using osl_scop_to_pluto_prog.
+                                Schedule the Pluto program using pluto_schedule_prog.
+                                Populate the scop with the Pluto program using pluto_populate_scop.
+                                
+                                Output:
+                                Transformed Pluto program and updated scop.
+    
+    
+    
+                           - Debug Flush:
+
+                                Input:
+                                bool debug
+                                
+                                Operations:
+                                If debugging is enabled, flush stderr and stdout to ensure proper output order.
+                                
+                                Output:
+                                Flushed debug output.
+                        
+                        
+                        
+                           - Print Scop Information After Pluto Transformation:
+
+                                Input:
+                                OslScop pointer (scop)
+                                
+                                Operations:
+                                Print the scop information after Pluto population to the standard error output.
+                                
+                                Output:
+                                Updated scop information printed to stderr.
+                        
+                        
+                        
+                           - Handle Dumping CLAST After Pluto:
+
+                                Input:
+                                std::string dumpClastAfterPluto
+                                
+                                Operations:
+                                Initialize a const char * pointer to nullptr for dumpClastAfterPlutoStr.
+                                If dumpClastAfterPluto is not empty, set dumpClastAfterPlutoStr to point to the character array of dumpClastAfterPluto.
+                                Print the value of dumpClastAfterPlutoStr for debugging.
+                                
+                                Output:
+                                dumpClastAfterPlutoStr set to point to the character array if the string is not empty.
+                                Debugging message printed with the value of dumpClastAfterPlutoStr.
+                        
+                        
+                        
+                           - Create New Function from OpenScop:
+
+                                Input:
+                                mlir::FuncOp f
+                                OslScop pointer (scop)
+                                mlir::ModuleOp parent module (m)
+                                OslSymbolTable dstTable
+                                OpBuilder context (rewriter.getContext())
+                                Pluto program (prog)
+                                const char * dumpClastAfterPlutoStr
+                                
+                                Operations:
+                                Cast the parent operation of f to mlir::ModuleOp.
+                                Collect all argument attributes of f.
+                                Create a new function g from the transformed OpenScop using createFuncOpFromOpenScop.
+                                Set all argument attributes of g to match those of f.
+                                
+                                Output:
+                                A new mlir::FuncOp g created from the transformed OpenScop with matching argument attributes.
+                        
+                        
+                        
+                           - Free Pluto Context:
+
+                                Input:
+                                Pluto context (context)
+                                
+                                Operations:
+                                Free the Pluto context using pluto_context_free.
+                                
+                                Output:
+                                Pluto context resources are released.
+                                
+                                Output:
+                                Return: The newly transformed function mlir::FuncOp g. If the transformation cannot be performed, returns nullptr.
+

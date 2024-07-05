@@ -1,0 +1,34 @@
+for Lower bound
+0
+for Upper bound
+1
+
+
+for Lower bound
+0
+for Upper bound
+1
+
+
+for Lower bound
+0
+for Upper bound
+1
+
+
+for Lower bound
+32*t1
+for Upper bound
+32*t1+31
+
+
+for Lower bound
+32*t3
+for Upper bound
+32*t3+31
+
+
+for Lower bound
+32*t2
+for Upper bound
+32*t2+31
