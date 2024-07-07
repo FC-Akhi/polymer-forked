@@ -7,6 +7,9 @@
 
 #include <fstream>
 #include <iostream>
+#include <string>
+
+
 
 #include "cloog/cloog.h"
 #include "cloog/pprint.h"
@@ -61,47 +64,22 @@ using json = nlohmann::json;
 using namespace polymer;
 using namespace mlir;
 
-/// My snippet
-// Create a JSON global object
-json j_v2;
-ordered_json j;
-ordered_json symbolTableJson;
+
 
 typedef llvm::StringMap<mlir::Operation *> StmtOpMap;
 typedef llvm::StringMap<mlir::Value> NameValueMap;
 typedef llvm::StringMap<std::string> IterScatNameMap;
 
 
-/// F: My snitch
-/// @brief : std::map for dumping the traces
-std::map<std::string, std::string> trace;
-int counter = 1;
 
-/// @brief Print the trace
-/// @param t 
-void trace_print(const std::map<std::string, std::string> &t) {
+/// My snippet
+// Create a JSON global object
+ordered_json trace;
 
-    for (const auto & [key, value] : t)
-
-        std::cout << "[" << key << "] = " << value << ";"; 
-
-}
+int counter = 0;
 
 
 
-/// @brief Dump the trace
-/// @param t : trace, std::map
-/// @param key : key of the map
-/// @param value : value of the map
-void trace_dump(std::map<std::string, std::string> &t, std::string key, std::string value) {
-
-
-    t[key] = value;
-
-
-}
-
-/// @brief these are the helping functions needed for Importer class methods 
 
 /// F: Function to convert mlir::Type to std::string
 std::string typeToString(mlir::Type type) {
@@ -326,13 +304,11 @@ LogicalResult AffineExprBuilder::process(clast_name *expr, llvm::SmallVectorImpl
   /// Check if the Name is a Symbol
   if (scop->isSymbol(expr->name)) {
 
-    std::printf("[process(clast_name)]I AM HIT\n");
+    // std::printf("[process(clast_name)]I AM HIT\n");
 
     /// Start processing the Symbol
-    /// Check if the Symbol is Already in symbolNames map. That means it has been proceesed before.
-    ///  This comparison checks if the iterator returned by find is different from end(). 
-    /// If it is different, it means the element was found in the map. If it is equal to end(), 
-    /// it means the element was not found.
+    /// This Check if the Symbol is Already in symbolNames map. That means it has been proceesed before.
+    /// symbolNames is a StringMap type declared in AffineExprBuilder class
     if (symbolNames.find(expr->name) != symbolNames.end())
 
       /// push the affine expression of symbol from symbolNames map to small vector affExprs
@@ -376,20 +352,20 @@ LogicalResult AffineExprBuilder::process(clast_name *expr, llvm::SmallVectorImpl
   }
 
   /// F: Iterate over the valueMap
-  std::cout << "\n" <<"Printing ValueMap" << "\n";
+  // std::cout << "\n" <<"Printing ValueMap" << "\n";
 
-  for (const auto& entry : valueMap) {
-    mlir::Value key = entry.first;
-    std::string value = entry.second;
+  // for (const auto& entry : valueMap) {
+  //   mlir::Value key = entry.first;
+  //   std::string value = entry.second;
 
-    std::string keyStr = valueToString(key);
+  //   std::string keyStr = valueToString(key);
 
 
-    std::cout << "Key: " << keyStr << ", Value: " << value << std::endl;
+  //   std::cout << "Key: " << keyStr << ", Value: " << value << std::endl;
 
-    /// Insert into JSON object, using an array to store multiple values
-    // oslValueJson[keyStr].push_back(value);
-  }
+  //   /// Insert into JSON object, using an array to store multiple values
+  //   // oslValueJson[keyStr].push_back(value);
+  // }
 
 
 
@@ -424,13 +400,12 @@ LogicalResult AffineExprBuilder::process(clast_term *expr, llvm::SmallVectorImpl
   /// The getAffineConstantExpr method of the OpBuilder (b) is used to create this constant expression.
   AffineExpr affExpr = b.getAffineConstantExpr(constant);
 
-
-  /// F: Print the initial constant affine expression.
-  std::string str;
-  llvm::raw_string_ostream rso(str);
-  affExpr.print(rso);
-  llvm::outs() << "Initial AffineExpr: " << rso.str() << "\n";
+  // Print the created AffineExpr
+  raw_ostream &os = llvm::outs();
   
+  os << "Affine Expression: ";
+  affExpr.print(os);
+  os << "\n";
 
 
   /// This checks if the clast_term has a variable part (var). 
@@ -463,6 +438,8 @@ LogicalResult AffineExprBuilder::process(clast_term *expr, llvm::SmallVectorImpl
   /// The resulting affine expression, which may now represent var * val or just val 
   /// if there was no variable part, is added to the affExprs vector.
   affExprs.push_back(affExpr);
+
+  
 
   return success();
 
@@ -793,7 +770,7 @@ namespace {
 
       void initializeSymbolTable();
       void initializeFuncOpInterface();
-      void initializeSymbol(mlir::Value val, ordered_json &j);
+      void initializeSymbol(mlir::Value val);
 
       LogicalResult processStmt(clast_root *rootStmt);
       LogicalResult processStmt(clast_for *forStmt);
@@ -801,8 +778,8 @@ namespace {
       LogicalResult processStmt(clast_user_stmt *userStmt);
       LogicalResult processStmt(clast_assignment *ass);
 
-      std::string getSourceFuncName(ordered_json &j) const;
-      mlir::FuncOp getSourceFuncOp(ordered_json &j);
+      std::string getSourceFuncName() const;
+      mlir::FuncOp getSourceFuncOp();
 
       LogicalResult getAffineLoopBound(clast_expr *expr, llvm::SmallVectorImpl<mlir::Value> &operands, AffineMap &affMap, bool isUpper = false);
       
@@ -880,67 +857,7 @@ static mlir::Value findBlockArg(mlir::Value v) {
 
 }
 
-/// We treat the provided the clast_expr as a loop bound. If it is a min/max
-/// reduction, we will expand that into multiple expressions.
-static LogicalResult processClastLoopBound(clast_expr *expr,
-                                           AffineExprBuilder &builder,
-                                           SmallVectorImpl<AffineExpr> &exprs,
-                                           CloogOptions *options) {
 
-
-  FILE *expandedExprs_dump = fopen("output-files/processClastLoopBound.txt", "a");
-  
-
-  
-  SmallVector<clast_expr *, 1> expandedExprs;
-
-  if (expr->type == clast_expr_red) {
-
-    clast_reduction *red = reinterpret_cast<clast_reduction *>(expr);
-
-    if (red->type == clast_red_max || red->type == clast_red_min) {
-
-      for (int i = 0; i < red->n; i++) {
-
-        expandedExprs.push_back(red->elts[i]);
-
-      }
-    
-    }
-  
-  }
-
-  
-  if (expandedExprs.empty()) // no expansion, just put the original input in.
-  
-    expandedExprs.push_back(expr);
-
-
-
-  
-  for (clast_expr *e : expandedExprs) {
-
-    /// F: Snitch to dump expandedExprs vector to file
-    fprintf(expandedExprs_dump, "Bounds printing:\n");
-    clast_pprint_expr(options, expandedExprs_dump, e);
-
-
-
-    if (failed(builder.process(e, exprs)))
-  
-      return failure();
-
-  }
-
-
-
-  fclose(expandedExprs_dump);
-
-  return success();
-
-
-
-}
 
 
 
@@ -1240,95 +1157,6 @@ void Importer::getInductionVars(clast_user_stmt *userStmt, osl_body_p body, Smal
 
 
 
-LogicalResult Importer::getAffineLoopBound(clast_expr *expr,
-                                           llvm::SmallVectorImpl<mlir::Value> &operands,
-                                           AffineMap &affMap, bool isUpper) {
-
-
-
-
-  /// F: My snitch         
-  FILE *clast_expr_output = fopen("output-files/6.clast_expr_from_getAffineLoopBound.txt", "a");
-
-  fprintf(clast_expr_output, "\nEntering getAffineLoopBound\n");
-
-
-
-  /// An AffineExprBuilder instance is created to help build affine expressions.
-  AffineExprBuilder builder(context, symTable, &symbolTable, scop, options);
-  /// A vector boundExprs is initialized to store the resulting affine expressions.
-  SmallVector<AffineExpr, 4> boundExprs;
-
-
-
-  /// F: My snitch
-  fprintf(clast_expr_output, "\n");
-  
-  
-  clast_pprint_expr(options, clast_expr_output, expr);
-  
-
-
-
-  /// The processClastLoopBound function is called to process the clast expression and convert it into one or more affine expressions.
-  if (failed(processClastLoopBound(expr, builder, boundExprs, options)))
-  
-    return failure();
-
-
-
-  /// If looking at the upper bound, we should add 1 to all of them.
-  if (isUpper)
-  
-    for (auto &expr : boundExprs)
-  
-      expr = expr + b.getAffineConstantExpr(1);
-
-  // Insert dim operands.
-  unsigned numDims = builder.dimNames.size();
-  unsigned numSymbols = builder.symbolNames.size();
-  operands.resize(numDims + numSymbols);
-
-  for (const auto &it : builder.dimNames) {
-  
-    if (auto iv = symbolTable[it.first()]) {
-  
-      operands[it.second] = iv;
-  
-    } else {
-  
-      llvm::errs() << "Dim " << it.first()
-                   << " cannot be recognized as a value.\n";
-  
-      return failure();
-  
-    }
-  
-  }
-
-  // Create or get BlockArgument for the symbols. We assume all symbols come
-  // from the BlockArgument of the generated function.
-  for (const auto &it : builder.symbolNames) {
-  
-    mlir::Value operand = symbolTable[it.first()];
-  
-    assert(operand != nullptr);
-  
-    operands[it.second + numDims] = operand;
-  
-  }
-
-  // Create the AffineMap for loop bound.
-  affMap = AffineMap::get(numDims, numSymbols, boundExprs, context);
-
-  /// F: My snitch
-  // Log exit point
-  fprintf(clast_expr_output, "\nExiting getAffineLoopBound\n");
-  fclose(clast_expr_output);
-
-  return success();
-
-}
 
 
 
@@ -1531,6 +1359,195 @@ LogicalResult Importer::processStmt(clast_user_stmt *userStmt) {
 
 
 
+/// We treat the provided the clast_expr as a loop bound. If it is a min/max
+/// reduction, we will expand that into multiple expressions.
+static LogicalResult processClastLoopBound(clast_expr *expr,
+                                           AffineExprBuilder &builder,
+                                           SmallVectorImpl<AffineExpr> &exprs,
+                                           CloogOptions *options) {
+
+  // char file_contents[1000];
+
+  FILE *expandedExprs_dump = fopen("output-files/1.polymer-commit-bda08-forOp/processClastLoopBound.txt", "a");
+  // clast_pprint_expr(options, expandedExprs_dump, expr);
+  // fclose(expandedExprs_dump);
+
+
+  // expandedExprs_dump = fopen("output-files/1.polymer-commit-bda08-forOp/processClastLoopBound.txt", "r");
+  // if (expandedExprs_dump == NULL) {
+  //   std::cerr << "Failed to open file.\n";
+  //   return failure();
+  // }
+
+
+  // /// Read the contents one by one and store in a string variable
+  // std::string BoundStr;
+  // while (fgets(file_contents, sizeof(file_contents), expandedExprs_dump)) {
+  //   BoundStr += file_contents;
+  // }
+  // fclose(expandedExprs_dump);
+
+  // trace["processStmt(clast_for *forStmt)"]["getAffineLoopBound()"]["processClastLoopBound()"]["Bound from Inside function"].push_back(BoundStr);
+
+  
+  SmallVector<clast_expr *, 1> expandedExprs;
+
+  if (expr->type == clast_expr_red) {
+
+    clast_reduction *red = reinterpret_cast<clast_reduction *>(expr);
+
+    if (red->type == clast_red_max || red->type == clast_red_min) {
+
+      for (int i = 0; i < red->n; i++) {
+
+        expandedExprs.push_back(red->elts[i]);
+
+      }
+    
+    }
+  
+  }
+
+  
+  if (expandedExprs.empty()) {// no expansion, just put the original input in.
+  
+    expandedExprs.push_back(expr);
+
+  }
+
+
+
+  /// Iterate over items in expandedExprs(it is expanded because of min and max reductions, If there is no min/max, then there is single item(lB/uB))
+  for (clast_expr *e : expandedExprs) {
+
+    /// Passing individual lB or uB and initially black exprs SV. This SV will get filled up by AffineExprs inside process()
+    if (failed(builder.process(e, exprs)))
+  
+      return failure();
+
+  }
+
+
+
+  
+
+  return success();
+
+
+
+}
+
+
+
+
+LogicalResult Importer::getAffineLoopBound(clast_expr *expr,
+                                           llvm::SmallVectorImpl<mlir::Value> &operands,
+                                           AffineMap &affMap, bool isUpper) {
+
+
+
+
+  /// F: My snitch         
+  FILE *clast_expr_output = fopen("output-files/1.polymer-commit-bda08-forOp/6.clast_expr_from_getAffineLoopBound.txt", "a");
+
+
+
+  /// An AffineExprBuilder instance is created to help build affine expressions.
+  AffineExprBuilder builder(context, symTable, &symbolTable, scop, options);
+
+
+  /// F: Dump the inputs we giving while creating instance of AffineExprBuilder class
+  trace["processStmt(clast_for *forStmt)"]["getAffineLoopBound()"]["AffineExprBuilder class instance"]["Some Inputs"] = "context, symTable, symbolTable, scop, options";
+
+
+
+
+
+  /// F: Dump the inputs for processClastLoopBound
+  trace["processStmt(clast_for *forStmt)"]["getAffineLoopBound()"]["processClastLoopBound()"]["Inputs"] = "loop bound from getAffineLoopBound() one at a time, builder, boundExprs, options";
+
+
+  /// A vector boundExprs is initialized to store the resulting affine expressions.
+  SmallVector<AffineExpr, 4> boundExprs;
+  
+  /// The processClastLoopBound function is called to process the clast expression and convert it into one or more affine expressions.
+  /// Here expr is lower or upper bound
+  /// boundExprs is empty small vector
+  if (failed(processClastLoopBound(expr, builder, boundExprs, options)))
+  
+    return failure();
+
+
+  
+   // Print the created AffineExpr type SV
+  raw_ostream &os = llvm::outs();
+  os << "Affine Expression from getAffineLoopBound(): ";  
+  for (AffineExpr e : boundExprs) {
+    e.print(os);
+    os << "\n";
+  }
+
+  os << "Dumping done------------\n";
+
+
+
+  /// If looking at the upper bound, we should add 1 to all of them.
+  if (isUpper)
+  
+    for (auto &expr : boundExprs)
+  
+      expr = expr + b.getAffineConstantExpr(1);
+
+  // Insert dim operands.
+  unsigned numDims = builder.dimNames.size();
+  unsigned numSymbols = builder.symbolNames.size();
+  operands.resize(numDims + numSymbols);
+
+  for (const auto &it : builder.dimNames) {
+  
+    if (auto iv = symbolTable[it.first()]) {
+  
+      operands[it.second] = iv;
+  
+    } else {
+  
+      llvm::errs() << "Dim " << it.first()
+                   << " cannot be recognized as a value.\n";
+  
+      return failure();
+  
+    }
+  
+  }
+
+  // Create or get BlockArgument for the symbols. We assume all symbols come
+  // from the BlockArgument of the generated function.
+  for (const auto &it : builder.symbolNames) {
+  
+    mlir::Value operand = symbolTable[it.first()];
+  
+    assert(operand != nullptr);
+  
+    operands[it.second + numDims] = operand;
+  
+  }
+
+  // Create the AffineMap for loop bound.
+  affMap = AffineMap::get(numDims, numSymbols, boundExprs, context);
+
+  /// F: My snitch
+  // Log exit point
+  fprintf(clast_expr_output, "\nExiting getAffineLoopBound\n");
+  fclose(clast_expr_output);
+
+  return success();
+
+}
+
+
+
+
+
 
 /// Generate the AffineForOp from a clast_for statement. First we create
 /// AffineMaps for the lower and upper bounds. Then we decide the step if
@@ -1543,24 +1560,20 @@ LogicalResult Importer::processStmt(clast_user_stmt *userStmt) {
 LogicalResult Importer::processStmt(clast_for *forStmt) {
 
 
-  FILE *clast_for_output = fopen("output-files/5.clast_for.txt", "a");
+  char file_contents[1000];
+  /// Prepare to store data for this loop statement
+  ordered_json loopBoundInfos;
   
-  
-  /// Get loop bounds.
-  /// Declares variables of type affine maps for the lower bound (lbMap) and upper bound (ubMap) of the loop.
+  /// Get affine loop bounds
   AffineMap lbMap, ubMap;
-
-
-  /// The actual size of each cell in memory depends on the size of the mlir::Value type
-  /// It allocates a fixed amount of space for a small number of elements and only falls back to heap allocation if that space is exceeded
   llvm::SmallVector<mlir::Value, 8> lbOperands, ubOperands;
-  
+
 
   /// Ensures that the loop has both a lower bound (LB) and an upper bound (UB). If either bound is missing, it asserts with an error message
   assert((forStmt->LB && forStmt->UB) && "Unbounded loops are not allowed.");
 
 
-  // TODO: simplify these sanity checks.
+  /// TODO: simplify these sanity checks.
   assert(!(forStmt->LB->type == clast_expr_red &&
            reinterpret_cast<clast_reduction *>(forStmt->LB)->type == clast_red_min) &&
          "If the lower bound is a reduced result, it should not use min for reduction.");
@@ -1572,32 +1585,103 @@ LogicalResult Importer::processStmt(clast_for *forStmt) {
 
 
 
-  /// F: My snitch
-  fprintf(clast_for_output, "\nforStmt->LB\n");
-
+  //// F: My snitch
+  /// Dump the clast expr in a file for lower bound
+  FILE *clast_for_output = fopen("output-files/1.polymer-commit-bda08-forOp/5.clast_for.txt", "w+");
+  if (clast_for_output == NULL) {
+    std::cerr << "Failed to open file for writing lower bound.\n";
+    return failure();
+  }
   clast_pprint_expr(options, clast_for_output, forStmt->LB);
-  
+  fclose(clast_for_output);
 
-  if (failed(getAffineLoopBound(forStmt->LB, lbOperands, lbMap))) {
+
+
+
+  /// Read the lower bound from the file
+  clast_for_output = fopen("output-files/1.polymer-commit-bda08-forOp/5.clast_for.txt", "r");
+  if (clast_for_output == NULL) {
+    std::cerr << "Failed to open file for reading lower bound.\n";
     return failure();
   }
 
-  
-  fprintf(clast_for_output, "\nfor->UB\n");
+
+
+
+  /// Read the contents one by one and store in a string variable
+  std::string lowerBoundStr;
+  while (fgets(file_contents, sizeof(file_contents), clast_for_output)) {
+    lowerBoundStr += file_contents;
+  }
+  fclose(clast_for_output);
+  /// Log the lower bound
+  loopBoundInfos["lowerBound"] = lowerBoundStr;
+
+
+
+
+  /// Dump the clast expr in a file for upper bound
+  clast_for_output = fopen("output-files/1.polymer-commit-bda08-forOp/5.clast_for.txt", "w");
+  if (clast_for_output == NULL) {
+    std::cerr << "Failed to open file for writing upper bound.\n";
+    return failure();
+  }
   clast_pprint_expr(options, clast_for_output, forStmt->UB);
+  fclose(clast_for_output);
 
-  if (failed(getAffineLoopBound(forStmt->UB, ubOperands, ubMap, /*isUpper=*/true))) {
+
+
+
+  /// Read the upper bound from the file
+  clast_for_output = fopen("output-files/1.polymer-commit-bda08-forOp/5.clast_for.txt", "r");
+  if (clast_for_output == NULL) {
+    std::cerr << "Failed to open file for reading upper bound.\n";
     return failure();
   }
 
 
 
-  /// getAffineLoopBound to convert the lower bound (LB) and upper bound (UB) expressions into affine maps and their corresponding operands. 
-  /// If either conversion fails, it returns a failure.
-  // if (failed(getAffineLoopBound(forStmt->LB, lbOperands, lbMap)) ||
-  //     failed(getAffineLoopBound(forStmt->UB, ubOperands, ubMap, /*isUpper=*/true)))
+  /// Read the contents one by one and store in a string variable
+  std::string upperBoundStr;
+  while (fgets(file_contents, sizeof(file_contents), clast_for_output)) {
+    upperBoundStr += file_contents;
+  }
+  fclose(clast_for_output);
+  /// Log the upper bound
+  loopBoundInfos["upperBound"] = upperBoundStr;
 
-  //   return failure();
+
+
+  /// Log the lbOperands
+  for (auto &operand : lbOperands) {
+    loopBoundInfos["lbOperands"].push_back(valueToString(operand));
+  }
+  /// Log the ubOperands
+  for (auto &operand : ubOperands) {
+    loopBoundInfos["ubOperands"].push_back(valueToString(operand));
+  }
+
+  trace["processStmt(clast_for *forStmt)"]["getAffineLoopBound()"]["Inputs"]["Some Inputs"] = "lbOperands, ubOperands, lbMap, ubMap";
+
+  /// Append the loop data to the trace for this function call
+  trace["processStmt(clast_for *forStmt)"]["getAffineLoopBound()"]["Inputs"]["loop bounds"].push_back(loopBoundInfos);
+
+
+
+  
+
+  if (failed(getAffineLoopBound(forStmt->LB, lbOperands, lbMap)) ||
+      failed(getAffineLoopBound(forStmt->UB, ubOperands, ubMap, /*isUpper=*/true))) {
+    return failure();
+  }
+
+
+
+
+  
+
+
+
 
 
   /// Initializes the loop stride to 1. If the stride is greater than 1, 
@@ -1744,6 +1828,9 @@ LogicalResult Importer::processStmt(clast_for *forStmt) {
   b.setInsertionPoint(&*std::prev(prevBlock->end()));
 
 
+  
+
+
   fclose(clast_for_output);
 
 
@@ -1758,7 +1845,7 @@ LogicalResult Importer::processStmt(clast_for *forStmt) {
 
 
 
-void Importer::initializeSymbol(mlir::Value val, ordered_json &j) {
+void Importer::initializeSymbol(mlir::Value val) {
 
   assert(val != nullptr);
 
@@ -1766,27 +1853,17 @@ void Importer::initializeSymbol(mlir::Value val, ordered_json &j) {
   OslScop::ValueTable *oslValueTable = scop->getValueTable();
 
 
-  /// func: is an instance of mlir::FuncOp, which represents a function in MLIR.
-  /// getBody(): is a method of FuncOp that returns the body of the function. 
-  /// The body of a function in MLIR is typically represented as a list of blocks (Block), 
-  /// where each block contains a sequence of operations (Operation).
-  /// The getBody() method returns a Region. A Region in MLIR is a container for a list of blocks.
-  /// begin() is a method of Region that returns an iterator to the first block in the region.
-  /// The * operator is used to dereference the iterator, yielding a reference to the first block in the region.
-  /// The & symbol indicates that entryBlock is a reference to the block.
+  /// Obtains the first block in the function's body, which serves as the entry block.
   auto &entryBlock = *func.getBody().begin();
 
 
   /// Save and restore the insertion point of the OpBuilder
   OpBuilder::InsertionGuard guard(b);
 
-  /// Look up for mlir value in valueTable and collect the corresponding symbolic name of that mlir::Value
+  /// Look up for mlir value in oslValueTable and collect the corresponding symbolic name of that mlir::Value
+  ///Example: If val is %0 = memref.alloc() : memref<64x64xf32>, symbol would be A1.
   std::string symbol = oslValueTable->lookup(val);
 
-
-
-  /// F: push all symbolic name of corresponding mlir::Value
-  j["symbol"].push_back(symbol);
 
 
   assert(!symbol.empty() && "val to initialize should have a corresponding "
@@ -1794,95 +1871,67 @@ void Importer::initializeSymbol(mlir::Value val, ordered_json &j) {
 
 
 
-  /// Symbols that are the block arguments won't be taken care of at this stage.
-  /// initializeFuncOpInterface() should already have done that.
-  /// it checks if val is something like this `<block argument> of type 'index' at index: 0`
+  /// If val is a block argument, there's nothing more to initialize, so the function returns early.
   if (mlir::BlockArgument arg = val.dyn_cast<mlir::BlockArgument>())
     return;
 
 
-  // This defOp should be cloned to the target function, while its operands
-  // may be symbols that are not yet initialized (e.g., IVs in loops not
-  // constructed). We should place them into the symbolToDeps map.
+  
+  /// Retrieves the operation that defines val.
+  /// Example: If val is %0 = memref.alloc() : memref<64x64xf32>, defOp is the memref.alloc operation.
   mlir::Operation *defOp = val.getDefiningOp();
 
+  /// F: My snitch
   std::string defOpStr = operationToString(defOp);
+  trace["processStmt(clast_root *rootStmt)"]["initializeSymbolTable()"]["initializeSymbol(mlir::Value val)"]["defOp"].push_back(defOpStr);
 
-  j["defOp"].push_back(defOpStr);
 
-  /// if val is something like this: `%2 = memref.alloc() : memref<64x64xf32>`
-  /// To verify if defOp is of a specific type, in this case, memref::AllocaOp.
-  /// isa<T>(x) is an LLVM utility function used to check if x is an instance of type T or x is of type T
-  /// defOp must have zero operands: memory allocation operation does not take any operands
-  /// Eg: %0 = memref.alloc() : memref<64x64xf32> This memref.alloc() operation has zero operands because 
-  /// it does not require any inputs to allocate memory.
+  
+  /// If the operation is a memory allocation with no operands
   if (isa<memref::AllocaOp>(defOp) && defOp->getNumOperands() == 0) {
 
+    
+
+    /// Set the insertion point to the start of the entry block
     b.setInsertionPointToStart(&entryBlock);
 
-    /// b.clone(*defOp): Create a copy (clone) of the operation defOp
-    /// ->getResult(0):  accesses the first result of the newly cloned operation
-    /// while cloning it might get change of register number
-    /// Like, %0 = memref.alloc() : memref<64x64xf32> might become %2 = memref.alloc() : memref<64x64xf32>
+    /// Clone the operation and add its result to the symbolTable with the symbolic name.
     symbolTable[symbol] = b.clone(*defOp)->getResult(0);
 
+    /// return early as the symbol is now initialized
     return;
 
   }
 
+
+
+
   // This indicates whether we have set an insertion point.
   bool hasInsertionPoint = false;
 
-
-
-  /// First we examine the AST structure.
-  /// parentOp is the parent operation where defOp is present
-  /// For example; defOp might be `%0 = memref.alloc() : memref<64x64xf32>` 
-  /// Here, this operation is allocated that place or block is parentOp
+  /// Retrieve the parentOp of %0 = memref.alloc() : memref<64x64xf32> and others
   mlir::Operation *parentOp = defOp->getParentOp();
 
-  /// F: Convert Value to string
+
+  /// F: My snitch
   std::string parentOpStr = operationToString(parentOp);
-
-  /// F: push to json
-  j["parentOp"].push_back(parentOpStr);
+  trace["processStmt(clast_root *rootStmt)"]["initializeSymbolTable()"]["initializeSymbol(mlir::Value val)"]["parentOp"].push_back(parentOpStr);
 
 
-  /// dyn_cast<mlir::AffineForOp>(parentOp) attempts to cast parentOp to mlir::AffineForOp
-  /// if parentOp is not AffineForOp then this part will not work
+  /// The parentOp is not AffineForOp for matmul so SKIPPING FOR NOW
   if (mlir::AffineForOp forOp = dyn_cast<mlir::AffineForOp>(parentOp)) {
 
-
-    /// forOp.getInductionVar() gets the induction variable of the affine for-loop
+    
     mlir::Value srcIV = forOp.getInductionVar();
 
-
-    /// F: Convert Value to string
-    std::string srcIVStr = valueToString(srcIV);
     
-    /// F: push to json
-    j["srcIV"].push_back(srcIVStr);
-
-
-    /// Retrieves the symbolic name associated with the induction variable
     std::string ivName = oslValueTable->lookup(srcIV);
     
-
-    /// F: push to json
-    j["ivName"].push_back(ivName);
-
-
-    /// checks if the induction variable has been mapped in the symbolTable
+    
     mlir::Value dstIV = symbolTable[ivName];
 
 
-    /// F: Convert Value to string
-    std::string dstIVStr = valueToString(dstIV);
-    
-    /// F: push to json
-    j["dstIVStr"].push_back(dstIVStr);
-
-
+   
     if (dstIV == nullptr) {
 
       symbolToDeps[ivName].insert(val);
@@ -1890,8 +1939,7 @@ void Importer::initializeSymbol(mlir::Value val, ordered_json &j) {
 
     } else {
 
-      // Now the loop IV is there, we just find its owner for loop and clone
-      // the op.
+    
       mlir::Block *blockToInsert = dstIV.cast<mlir::BlockArgument>().getOwner();
 
       hasInsertionPoint = true;
@@ -1901,13 +1949,17 @@ void Importer::initializeSymbol(mlir::Value val, ordered_json &j) {
   
   } 
   
-  /// dyn_cast<mlir::FuncOp>(parentOp) attempts to cast parentOp to mlir::FuncOp
-  /// if parentOp is FuncOp then this part will work. If the cast is successful, it means parentOp is a function
+  
+
+  /// parentOp is indeed FuncOp for matmul.mlir eg
   else if (mlir::FuncOp funOp = dyn_cast<mlir::FuncOp>(parentOp)) {
+
+    
 
     /// Insert at the beginning of this function.
     hasInsertionPoint = true;
 
+    /// Just setting insertion point at the start of entryBlock
     b.setInsertionPointToStart(&entryBlock);
 
 
@@ -1921,25 +1973,17 @@ void Importer::initializeSymbol(mlir::Value val, ordered_json &j) {
   }
 
 
+
+  /// ================SKIPPING BELOW PART FOR NOW======================
   /// Take a small vector for storing new operands
   /// Here, it is used to store up to 8 operands
   SmallVector<mlir::Value, 8> newOperands;
-
   /// Next, we check whether all operands are in the symbol table
   /// Loop through each operand of the defining operation (defOp)
   for (mlir::Value operand : defOp->getOperands()) {
 
-    /// F: Convert Value to string
-    std::string operandStr = valueToString(operand);
-    
-    /// F: push to json
-    j["operandStr"].push_back(operandStr);
 
     std::string operandSymbol = oslValueTable->lookup(operand);
-
-    /// F: push to json
-    j["operandSymbol"].push_back(operandSymbol);
-
 
     ///  If the operand symbol is empty, check if the operand is defined by a constant operation
     if (operandSymbol.empty()) {
@@ -1976,27 +2020,47 @@ void Importer::initializeSymbol(mlir::Value val, ordered_json &j) {
 
   // The operands are not sufficient, should wait.
   /// Ensure that the number of new operands matches the number of operands of defOp
-  if (newOperands.size() < defOp->getNumOperands())
-  
+  if (newOperands.size() < defOp->getNumOperands()) {
+    
     return;
 
+  }
+
+
   // Finally do the initialization.
-  if (!hasInsertionPoint)
-  
+  if (!hasInsertionPoint) {
+    
     return;
+  
+  }
+
+
+
 
 
 
   BlockAndValueMapping vMap;
   
   /// Create a mapping from the original operands to the new operands
-  for (unsigned i = 0; i < newOperands.size(); i++)
-  
+  for (unsigned i = 0; i < newOperands.size(); i++) {
+
     vMap.map(defOp->getOperand(i), newOperands[i]);
 
+  }
+
+  /// ==================SKIPPING TILL ABOVE PART FOR NOW except BlockAndValueMapping vMap;===================
+
   
 
+  /// This is the one of the best culprit i have ever seen
+  /// The clone function creates a duplicate of an existing operation and inserts it into the IR.
+  /// For more fucking explanation about the culprit check: About clone() : https://mlir.llvm.org/doxygen/Builders_8cpp_source.html#l00555
+  /// About insert() : https://mlir.llvm.org/doxygen/Builders_8cpp_source.html#l00428
   mlir::Operation *newOp = b.clone(*defOp, vMap);
+
+  /// F: My snitch
+  trace["processStmt(clast_root *rootStmt)"]["initializeSymbolTable()"]["initializeSymbol(mlir::Value val)"]["func"].push_back(operationToString(func));
+
   
   assert(newOp != nullptr);
   
@@ -2005,27 +2069,18 @@ void Importer::initializeSymbol(mlir::Value val, ordered_json &j) {
   symbolTable[symbol] = newOp->getResult(0);
 
 
-
-
-
-
-  /// F: Open an ofstream to write to the file "data.json"
-  std::ofstream o("data.json");
-  
-  /// F:
-  if (!o.is_open()) {
-      
-      /// F:
-      std::cerr << "Failed to open file for writing.\n";
-    
-  }
-
-  /// F: Write formatted JSON data to the file
-  o << j.dump(4); // The argument '4' makes the JSON output pretty-printed with an indentation of 4 spaces
-
-  /// F: Close the file stream
-  o.close();
-
+  ///
+  /// Key Points:
+  /// Order and Instances: The order in which the symbolTable entries appear might not match the original oslValueTable 
+  /// due to the cloning process. Each new operation (newOp) is a distinct clone and not the same instance as the original.
+  /// Unique Instances: Cloning ensures that each newOp is a unique instance, even if it has the same structure as the original. 
+  /// This is crucial for maintaining the integrity of the IR, avoiding potential conflicts or unintended references to original operations.
+  /// Logging and Tracking: When logging or tracking these operations, they appear as distinct but structurally identical operations. 
+  /// The discrepancies in the symbol table arise because these are newly created instances with their unique identities.
+  /// Conclusion:
+  /// The perceived discrepancies are due to the nature of the cloning process, which creates new, distinct instances of operations 
+  /// that are structurally identical to the original ones. This ensures that the IR maintains separate, independent operations, 
+  /// which is critical for accurate transformations and optimizations.
 
 
 }
@@ -2035,17 +2090,37 @@ void Importer::initializeSymbol(mlir::Value val, ordered_json &j) {
 
 void Importer::initializeSymbolTable() {
 
+  /// This is SymbolTable type from OslScop. Retrieve SymbolTable from scop
+  /// using SymbolTable = llvm::StringMap<mlir::Value>;
   OslScop::SymbolTable *oslSymbolTable = scop->getSymbolTable();
+
+  /// F: Iterate over the oslSymbolTable
+  for (const auto& entry : *oslSymbolTable) {
+    
+    
+    std::string key = entry.getKey().str();
+    mlir::Value value = entry.second;
+
+    std::string valueStr = valueToString(value);
+
+    /// Insert into JSON object, using an array to store multiple values
+    trace["processStmt(clast_root *rootStmt)"]["initializeSymbolTable()"]["oslSymbolTable"][key].push_back(valueStr);
+  }
+
 
   OpBuilder::InsertionGuard guard(b);
 
   auto &entryBlock = *func.getBody().begin();
 
+  /// Insertion point setting at the start of entryBlock of function op
   b.setInsertionPointToStart(&entryBlock);
 
-  /// Constants
+
+
+  /// Creates a new constant operation that produces the value 0 of type index. This operation is added to the symbol table with the symbolic name "zero".
   symbolTable["zero"] = b.create<mlir::arith::ConstantOp>(b.getUnknownLoc(), b.getIndexType(), b.getIntegerAttr(b.getIndexType(), 0));
 
+  
   // Check that the symbol was added
   if (symbolTable.find("zero") != symbolTable.end()) {
 
@@ -2055,66 +2130,26 @@ void Importer::initializeSymbolTable() {
     std::cerr << "Failed to add 'zero' to the symbolTable." << std::endl;
   }
 
-  /// F:
-  ordered_json& initJson = j["initializeSymbolTable()"];
-  ordered_json& oslSymbolJson = initJson["*oslSymbolTable"];
-  
-  /// F: Iterate over the ValueTable
-  // Iterate over the OSL symbol table and populate the JSON object
-  for (const auto& entry : *oslSymbolTable) {
-
-    /// F: Insert into JSON object, using an array to store multiple values
-    oslSymbolJson[entry.first().str()].push_back(valueToString(entry.second));
-  
-  }
-
-  ordered_json &symbolTableJson1 = initJson["symbolTableInsideinitializeSymbolTable()"];
-
-  /// F: Print the final contents of the symbolTable
-  for (const auto& entry : symbolTable) {
-
-    /// F: Insert into JSON object, using an array to store multiple values
-    symbolTableJson1[entry.first().str()].push_back(valueToString(entry.second));
-
-  }
+ 
 
   
   for (const auto &it : *oslSymbolTable)
 
-    initializeSymbol(it.second, initJson["initializeSymbol()"]);
+    initializeSymbol(it.second);
 
 
-  ordered_json &symbolTableJson2 = initJson["symbolTableAfterinitializeSymbol()call"];
-
-  /// F: Print the final contents of the symbolTable
+  /// F: Iterate over the symbolTable
   for (const auto& entry : symbolTable) {
-
-    /// F: Insert into JSON object, using an array to store multiple values
-    symbolTableJson2[entry.first().str()].push_back(valueToString(entry.second));
-
-  }
-
-
-
-  // F: Open an ofstream to write to the file "data.json"
-  std::ofstream o("data.json");
-  
-  /// F:
-  if (!o.is_open()) {
-      
-      /// F:
-      std::cerr << "Failed to open file for writing.\n";
     
+    
+    std::string key = entry.getKey().str();
+    mlir::Value value = entry.second;
+
+    std::string valueStr = valueToString(value);
+
+    /// Insert into JSON object, using an array to store multiple values
+    trace["processStmt(clast_root *rootStmt)"]["initializeSymbolTable()"]["symbolTable"][key].push_back(valueStr);
   }
-
-  /// F: Write formatted JSON data to the file
-  o << j.dump(4); // The argument '4' makes the JSON output pretty-printed with an indentation of 4 spaces
-
-  /// F: Close the file stream
-  o.close();
-
-
-
 
 
 }
@@ -2123,43 +2158,19 @@ void Importer::initializeSymbolTable() {
 
 /// If there is anything in the comment, we will use it as a function name.
 /// Otherwise, we return an empty string.
-std::string Importer::getSourceFuncName(ordered_json &j) const {
+std::string Importer::getSourceFuncName() const {
 
   osl_generic_p comment = scop->getExtension("comment");
 
-  /// F:
-  FILE *scop_getextension_getSourceFuncName = fopen("scop_getextension_getSourceFuncName.txt", "w");
-  osl_generic_idump(scop_getextension_getSourceFuncName, comment, 4);
-  /// end of my snippet
+  
 
   if (comment) {
 
     char *commentStr = reinterpret_cast<osl_comment_p>(comment->data)->comment;
 
-    /// F:
-    j["commentStr"] = commentStr;
-
     return std::string(commentStr);
 
   }
-
-
-  /// F: Open an ofstream to write to the file "data.json"
-  std::ofstream o("data.json");
-  
-  /// F:
-  if (!o.is_open()) {
-      
-      /// F:
-      std::cerr << "Failed to open file for writing.\n";
-    
-  }
-
-  /// F: Write formatted JSON data to the file
-  o << j.dump(4); // The argument '4' makes the JSON output pretty-printed with an indentation of 4 spaces
-
-  /// F: Close the file stream
-  o.close();
 
   return std::string("");
 
@@ -2169,38 +2180,42 @@ std::string Importer::getSourceFuncName(ordered_json &j) const {
 
 
 
-mlir::FuncOp Importer::getSourceFuncOp(ordered_json &j) {
+mlir::FuncOp Importer::getSourceFuncOp() {
 
-  std::string sourceFuncName = getSourceFuncName(j["getSourceFuncName()"]);
+  /// Get function name. E.g: matmul
+  std::string sourceFuncName = getSourceFuncName();
   
+
+  ///Look up the operation (in this case, a function) by its name within the module.
+  /// The function name is stored in the variable 'sourceFuncName', which was obtained earlier.
+  /// The 'module' is a container for a collection of operations, typically representing
+  /// the entire code being compiled or transformed.
+  /// 'lookupSymbol' is a method provided by the 'SymbolTable' trait, which allows us to
+  /// search for operations by their names within the module.
+  /// If the function with the name 'sourceFuncName' is found, 'lookupSymbol' returns a pointer
+  /// to that operation. If it is not found, it returns a nullptr.
+  /// This line essentially retrieves the function operation from the module by its name.
+  /// Link: Trait vs Interface: https://mlir.llvm.org/getting_started/Faq/#what-is-the-difference-between-traits-and-interfaces
+  /// The current module created publically inside Importer class.
+  /// ModuleOp module;
   mlir::Operation *sourceFuncOp = module.lookupSymbol(sourceFuncName);
 
-  
-  /// F: Convert operation to string and store in JSON
-  j["sourceFuncOp"] = operationToString(sourceFuncOp);
 
-  /// F: Open an ofstream to write to the file "data.json"
-  std::ofstream o("data.json");
-  
-  /// F:
-  if (!o.is_open()) {
-      
-      /// F:
-      std::cerr << "Failed to open file for writing.\n";
-    
-  }
 
-  /// F: Write formatted JSON data to the file
-  o << j.dump(4); // The argument '4' makes the JSON output pretty-printed with an indentation of 4 spaces
 
-  /// F: Close the file stream
-  o.close();
+  /// F: My Json dumping
+  trace["processStmt(clast_root *rootStmt)"]["initializeFuncOpInterface()"]["getSourceFuncOp()"]["sourceFuncName"] = sourceFuncName;
+
+  trace["processStmt(clast_root *rootStmt)"]["initializeFuncOpInterface()"]["getSourceFuncOp()"]["sourceFuncOp"] = operationToString(sourceFuncOp);
+
   
 
+  /// The assert statements ensure that the symbol was found and is of the correct type (FuncOp).
   assert(sourceFuncOp != nullptr && "sourceFuncName cannot be found in the module");
   
   assert(isa<mlir::FuncOp>(sourceFuncOp) && "Found sourceFuncOp should be of type mlir::FuncOp.");
 
+  /// Casting to mlir FuncOp specifically
   return cast<mlir::FuncOp>(sourceFuncOp);
 
 }
@@ -2219,71 +2234,119 @@ void Importer::initializeFuncOpInterface() {
   /// for the type `llvm::DenseMap<mlir::Value, std::string>`
   OslScop::ValueTable *oslValueTable = scop->getValueTable();
   
-
   
-  /// F: Populate the oslValueTable section first
-  ordered_json& initJson = j["initializeFuncOpInterface()"];
-  /// F:
-  ordered_json& oslValueJson = initJson["oslValueTable"];
 
-  /// F: Iterate over the ValueTable
+  /// F: Iterate over the oslValueTable
   for (const auto& entry : *oslValueTable) {
     mlir::Value key = entry.first;
     std::string value = entry.second;
 
     std::string keyStr = valueToString(key);
 
-    /// std::cout << "Key: " << keyStr << ", Value: " << value << std::endl;
-
     /// Insert into JSON object, using an array to store multiple values
-    oslValueJson[keyStr].push_back(value);
+    trace["processStmt(clast_root *rootStmt)"]["initializeFuncOpInterface()"]["oslValueTable"][keyStr].push_back(value);
   }
 
-  /// F: Call getSourceFuncOp() and pass the JSON object by reference
-  mlir::FuncOp sourceFuncOp = getSourceFuncOp(initJson["getSourceFuncOp()"]);
 
-  /// OpBuilder::InsertionGuard guard(b);
+
+  /// Retrieves the original function operation that needs to be transformed.
+  mlir::FuncOp sourceFuncOp = getSourceFuncOp();
+
+
+
+  
+  /// Sets the insertion point in the module where the new function operation will be inserted.
   b.setInsertionPoint(module.getBody(), getFuncInsertPt());
 
+
+
+
+  /// New function operation name determination
   /// The default function name is main.
   std::string funcName("main");
+  /// Get the function name.
+  std::string sourceFuncName = getSourceFuncName();
+  /// if sourceFuncName is not empty than "sourceFuncName.empty()" will return False and "!" will make condition true
+  if (!sourceFuncName.empty()) 
 
-  /// F: If the comment is provided, we will use it as the function name.
-  std::string sourceFuncName = getSourceFuncName(initJson["getSourceFuncName()"]);
-
-  if (!sourceFuncName.empty()) {
+    /// funcName will have E.g: matmul_opt. matmul function name we already got from getSourceFuncName() method call
+    /// But, if there is no function name then by default it will be main
     funcName = std::string(formatv("{0}_opt", sourceFuncName));
-  }
+  
 
-  /// Create the function interface.
+
+
+  /// @brief: The 'create' method of OpBuilder class constructs a new Instance of FuncOp class
+  /// Link for Opbuilder create method: https://github.com/llvm/llvm-project/blob/22dfa1aa2c6b4026b4a5d1f594197ee22af3136d/mlir/lib/IR/Builders.cpp#L469
+  /// @param: 
+  /// - sourceFuncOp.getLoc(): provides the location information from the original source code where the function is defined
+  ///                          It's useful for debugging and diagnostics, as it helps trace back to the original source code.
+  /// - funcName: This is the name to be assigned to the new function in output MLIR. 
+  ///             It can be a default name like "main" or derived from the original function name with some modification (e.g., appending "_opt").
+  /// - sourceFuncOp.getType(): This defines the type signature of the function, including its list of function inputs and outputs types. 
+  ///                           The new function operation will have the same type signature as the original source function.
+  ///                           FunctionType is one of the Type which holds this signature
+  ///
+  /// The result is stored in the 'func' member variable of the Importer class, which holds newly created instance of FuncOp class
+  ///
+  /// Again though here they used variable name as 'func', in MLIR it is the name of dialect under which we have FuncOp class(C++) or we can say Ops(MLIR).
+  ///  
+  /// *Note:* When you create an operation using the builder b, it is automatically inserted into the IR at the specified insertion point. 
   func = b.create<FuncOp>(sourceFuncOp.getLoc(), funcName, sourceFuncOp.getType());
 
-  /// F: Add remaining fields in the desired order
-  initJson["funcName"] = funcName;
-  initJson["sourceFuncOp location"] = locationToString(sourceFuncOp.getLoc());
-  initJson["sourceFuncOp func return type"] = typeToString(sourceFuncOp.getType());
 
-  /// Initialize the symbol table for these entryBlock arguments
+  std::string sourceFuncOpLoc = locationToString(sourceFuncOp.getLoc());
+  std::string sourceFuncOpType = typeToString(sourceFuncOp.getType());
+  
+
+  trace["processStmt(clast_root *rootStmt)"]["initializeFuncOpInterface()"]["FuncOp class or Ops: object instantiation needs input"]["sourceFuncOp.getLoc()"] = sourceFuncOpLoc;
+  trace["processStmt(clast_root *rootStmt)"]["initializeFuncOpInterface()"]["FuncOp class or Ops: object instantiation needs input"]["function name"].push_back(funcName);
+  trace["processStmt(clast_root *rootStmt)"]["initializeFuncOpInterface()"]["FuncOp class or Ops: object instantiation needs input"]["sourceFuncOp.getType()"].push_back(sourceFuncOpType);
+
+
+  
+
+  /// addEntryBlock(): Method that creates an entry block for the function Operation
+  /// entryBlock: reference to the newly created block
   auto& entryBlock = *func.addEntryBlock();
 
+
+  /// This sets the insertion point within the function Ops body at beginning location where the new entry block will be inserted.
   b.setInsertionPointToStart(&entryBlock);
+
+
+  /// ReturnOp is another Op under 'func' dialect.
+  /// Once it is created and inserted into the IR, there is no immediate need to manipulate or reference it further in the current context.
+  /// If you needed to manipulate the ReturnOp after creating it (e.g., setting attributes, connecting it to other operations), 
+  /// you would assign it to a variable like the way we did before for FunOp
   b.create<mlir::func::ReturnOp>(UnknownLoc::get(context));
+  
+
+
+  /// Resets the insertion point to the start of the entry block for further operations insertion.
   b.setInsertionPointToStart(&entryBlock);
 
 
-  /// F:
-  ordered_json& argsJson = initJson["arguments"];
 
 
-  /// This part handles block arguments or function parameters
+  /// To understand how entryBlock could get number of function arguments see below few lines
+  /// auto funcType = FunctionType::get(context, {IntegerType::get(context, 32), FloatType::get(context)}, {FloatType::get(context)});
+  /// auto funcOp = FuncOp::create(Location::unknown(), "example", funcType);
+  /// auto &entryBlock = *funcOp.addEntryBlock();
+  /// This adds an entry block to the function.
+  /// The entry block gets arguments based on the function's signature.
+
+  /// This part handles function parameters
   for (unsigned i = 0; i < entryBlock.getNumArguments(); i++) {
     
+    /// sourceFuncOp.getArgument(i) retrieves the i-th argument of the sourceFuncOp.
+    /// oslValueTable->lookup(...) looks up the symbolic name for the given MLIR value (argument).
+    /// The symbolic name is stored in argSymbol. Check in Json under oslValueTable
     std::string argSymbol = oslValueTable->lookup(sourceFuncOp.getArgument(i));
+
+    /// Get the ith argument from current funcOp through entryBlock
     mlir::Value arg = entryBlock.getArgument(i);
 
-    /// F: Use a unique key for each argument
-    argsJson[i]["argSymbol"] = argSymbol;
-    argsJson[i]["arg"] = valueToString(arg);
 
     /// If the source type is not index, cast it to index then.
     if (scop->isParameterSymbol(argSymbol) && arg.getType() != b.getIndexType()) {
@@ -2292,35 +2355,33 @@ void Importer::initializeFuncOpInterface() {
       symbolTable[argSymbol] = op->getResult(0);
     
     } else {
-    
+      
+      /// Otherwise just add it to the symbolTable
+      /// The symbol table that will be built on the fly. And declared inside Importer class
+      /// SymbolTable = llvm::StringMap<mlir::Value>;
+      /// SymbolTable symbolTable;
       symbolTable[argSymbol] = arg;
     
     }
   
   }
 
-  
-  /// F: Open an ofstream to write to the file "data.json"
-  std::ofstream o("data.json");
 
-  /// F: 
-  if (!o.is_open()) {
-  
-    std::cerr << "Failed to open file for writing.\n";
-  
-  /// F: 
-  } else {
+
+  /// F: Iterate over the symbolTable
+  for (const auto& entry : symbolTable) {
     
-    // Write formatted JSON data to the file
-    o << j.dump(4); // The argument '4' makes the JSON output pretty-printed with an indentation of 4 spaces
     
-    // Close the file stream
-    o.close();
-    
-    // Output success message
-    std::cout << "Data has been dumped to data.json successfully.\n";
-  
+    std::string key = entry.getKey().str();
+    mlir::Value value = entry.second;
+
+    std::string valueStr = valueToString(value);
+
+    /// Insert into JSON object, using an array to store multiple values
+    trace["processStmt(clast_root *rootStmt)"]["initializeFuncOpInterface()"]["symbolTable"][key].push_back(valueStr);
   }
+
+  
 
 }
 
@@ -2333,16 +2394,18 @@ void Importer::initializeFuncOpInterface() {
 /// default "main".
 LogicalResult Importer::processStmt(clast_root *rootStmt) {
   
-  /// F: My snitch
-  printf("[processStmt clast_root *rootstmt] I AM HIT=====================\n");
-
-  trace["processStmt(clast_root *rootStmt)"] = "Start of the rootStmt for creating the funcOp box";
-
+  
   // Create the function.
   initializeFuncOpInterface();
   
+  trace["processStmt(clast_root *rootStmt)"]["New funcOp after initializeFuncOpInterface() processes"] = operationToString(func);
+
   // Initialize several values before start.
   initializeSymbolTable();
+
+  trace["processStmt(clast_root *rootStmt)"]["New funcOp after initializeSymbolTable() processes"] = operationToString(func);
+
+
 
   return success();
 
@@ -2353,147 +2416,120 @@ LogicalResult Importer::processStmt(clast_root *rootStmt) {
 
 
 LogicalResult Importer::processStmtList(clast_stmt *s) {
-
-  /// Declare a file pointer and also some necessary variables
-  FILE *rootStmt_dump = fopen("output-files/rootStmt.txt", "w+");
+  
+  /// Declare a file pointer and a buffer for file contents
+  FILE *rootStmt_dump;
   char file_contents[1000];
+  std::string root_ast;
+  std::string counterStr;
   
 
+  /// Helper function to process a statement and update JSON
+  auto processAndLogStmt = [&](clast_stmt *stmt, const std::string &stmtType) -> LogicalResult {
+  
+    rootStmt_dump = fopen("output-files/1.polymer-commit-bda08-forOp/4.rootStmt.txt", "w+");
+    if (!rootStmt_dump) {
+  
+      std::cerr << "Failed to open file for writing.\n";
+      return failure();
+  
+    }
 
-  /// Check if the file is opened successfully
-  if (!rootStmt_dump) {
+    /// Dump AST to file
+    clast_pprint(rootStmt_dump, stmt, 0, options);
+    fclose(rootStmt_dump);
 
+    /// Open the file in read mode
+    rootStmt_dump = fopen("output-files/1.polymer-commit-bda08-forOp/4.rootStmt.txt", "r");
+    if (!rootStmt_dump) {
+      std::cerr << "Failed to open file for reading.\n";
+      return failure();
+    }
+
+    /// Read the contents of the file into a string
+    root_ast.clear(); /// Clear previous contents
+    while (fgets(file_contents, sizeof(file_contents), rootStmt_dump)) {
+      root_ast += file_contents;
+    }
+    fclose(rootStmt_dump);
+
+    /// Update JSON trace
+    trace["processStmt(" + stmtType + ")"]["Input"][std::to_string(counter)] = root_ast;
+
+    return success();
+  };
+
+
+
+  /// Loop through each statement in the linked list
+  for (; s; s = s->next) {
+    
+    counter++;
+    
+    if (CLAST_STMT_IS_A(s, stmt_root)) {
+      
+      /// Process root statement
+      if (failed(processAndLogStmt(s, "clast_root *rootStmt")) ||
+    
+        failed(processStmt(reinterpret_cast<clast_root *>(s)))) {
+        return failure();
+      
+      }
+      
+      
+
+    } else if (CLAST_STMT_IS_A(s, stmt_for)) {
+      
+      /// Process for statement
+      if (failed(processAndLogStmt(s, "clast_for *forStmt")) ||
+      
+        failed(processStmt(reinterpret_cast<clast_for *>(s)))) {
+        return failure();
+      
+      }
+    
+      
+
+    } else if (CLAST_STMT_IS_A(s, stmt_user)) {
+      
+      /// Process user statement
+      if (failed(processStmt(reinterpret_cast<clast_user_stmt *>(s)))) {
+        return failure();
+      
+      }
+    
+      
+    
+    } else {
+      
+      assert(false && "clast_stmt type not supported");
+    
+    }
+    
+
+  }
+
+  /// Write JSON trace to a file
+  std::ofstream o("output-files/1.polymer-commit-bda08-forOp/data_v2.json");
+  
+  if (!o.is_open()) {
+  
     std::cerr << "Failed to open file for writing.\n";
     return failure();
   
+  } else {
+  
+    o << trace.dump(4); /// Pretty-printed JSON with 4 spaces indentation
+    o.close();
+    std::cout << "Data has been dumped to data_v2.json successfully.\n";
+  
   }
 
-
-
-  /// Loop through each statement in the linked list until the end (NULL)
-  for (; s; s = s->next) {
-    
-    /// Check if the current statement is of type 'stmt_root'
-    if (CLAST_STMT_IS_A(s, stmt_root)) {
-      
-        /// Dump the clast in a file
-        clast_pprint(rootStmt_dump, s, 0, options);
-
-
-        /// Close the file after writing
-        fclose(rootStmt_dump);
-
-        /// Reopen the file in read mode
-        rootStmt_dump = fopen("output-files/rootStmt.txt", "r");
-
-        /// Read the contents of file and print in console
-        printf("Clast is printing from stmt_root\n");
-        if (rootStmt_dump != NULL) {
-
-          printf("Counter: %d\n", counter);
-          while(fgets(file_contents, 1000, rootStmt_dump)) 
-
-            printf("%s", file_contents);
-
-          /// Clearing the array 
-          file_contents[0] = '\0';
-          counter++;
-
-        }
-        printf("Clast printing from stmt_root done==============\n");
-        /// Process the statement and check for failure
-        if (failed(processStmt(reinterpret_cast<clast_root *>(s))))
-
-          // Return a failure result if processing failed
-          return failure();
-
-
-
-    } else if (CLAST_STMT_IS_A(s, stmt_for)) {
-
-
-        /// Dump the clast in a file
-        clast_pprint(rootStmt_dump, s, 0, options);
-
-
-        /// Close the file after writing
-        fclose(rootStmt_dump);
-
-        /// Reopen the file in read mode
-        rootStmt_dump = fopen("output-files/rootStmt.txt", "r");
-
-        /// Read the contents of file and print in console
-        printf("Clast is printing from stmt_for\n");
-        if (rootStmt_dump != NULL) {
-
-          printf("Counter: %d\n", counter);
-          while(fgets(file_contents, 1000, rootStmt_dump)) 
-
-            printf("%s", file_contents);
-
-          file_contents[0] = '\0';
-          counter++;
-
-        }
-        printf("Clast printing from stmt_for done==============\n");
-
-        // Same process for a 'stmt_for' (a for loop statement)
-        if (failed(processStmt(reinterpret_cast<clast_for *>(s))))
-
-          return failure();
-      
-    
-    } else if (CLAST_STMT_IS_A(s, stmt_user)) {
-
-        /// Dump the clast in a file
-        clast_pprint(rootStmt_dump, s, 0, options);
-
-
-        /// Close the file after writing
-        fclose(rootStmt_dump);
-
-        /// Reopen the file in read mode
-        rootStmt_dump = fopen("output-files/rootStmt.txt", "r");
-
-        /// Read the contents of file and print in console
-        printf("Clast is printing from stmt_user\n");
-        if (rootStmt_dump != NULL) {
-
-          printf("Counter: %d\n", counter);
-          while(fgets(file_contents, 1000, rootStmt_dump)) 
-
-            printf("%s", file_contents);
-
-          file_contents[0] = '\0';
-          counter++;
-
-        }
-        printf("Clast printing from stmt_user done==============\n");
-
-        // Same process for a statement of type 'stmt_user'
-        if (failed(processStmt(reinterpret_cast<clast_user_stmt *>(s))))
-    
-          return failure();
-
-  
-    } else {
-
-        // If the statement is not recognized, assert failure (crash)
-        assert(false && "clast_stmt type not supported");
-    
-    }
-  
-  } // for ends here
-
-  fclose(rootStmt_dump);
-
-  // If all statements were processed successfully, return a success result
   return success();
-
 }
 
 
-/// Above this point all things belongs to Importer  
+
 
 
 
@@ -2517,7 +2553,7 @@ static void unrollJamClastByPlutoProg(clast_stmt *root,
 
     std::string iter(formatv("t{0}", ploops[i]->depth + 1));
 
-    // Collect all statements within the current parallel loop.
+    /// Collect all statements within the current parallel loop.
     SmallVector<int, 8> stmtIds(ploops[i]->nstmts);
   
     for (unsigned j = 0; j < ploops[i]->nstmts; j++)
@@ -2646,9 +2682,9 @@ mlir::Operation *polymer::createFuncOpFromOpenScop(std::unique_ptr<OslScop> scop
   std::cout << "create Func OP.\n" << std::endl;
 
 
-  FILE *CloogOut = fopen("output-files/1. scop_to_cloog.cloog", "w");
-  FILE *ProgramOut = fopen("output-files/2. cloog_to_program.txt", "w");
-  FILE *ClastOut = fopen("output-files/3. program_to_clast.txt", "w");
+  FILE *CloogOut = fopen("output-files/1.polymer-commit-bda08-forOp/1.scop_to_cloog.cloog", "w");
+  FILE *ProgramOut = fopen("output-files/1.polymer-commit-bda08-forOp/2.cloog_to_program.txt", "w");
+  FILE *ClastOut = fopen("output-files/1.polymer-commit-bda08-forOp/3.program_to_clast.txt", "w");
   // FILE *scop_file = fopen("scop_file.txt", "w");
   // FILE *options1 = fopen("options.txt", "w");
 
@@ -2898,3 +2934,5 @@ namespace polymer {
   }
 
 } // namespace polymer
+
+

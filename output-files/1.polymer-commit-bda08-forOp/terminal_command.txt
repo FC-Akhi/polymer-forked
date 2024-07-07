@@ -1,3 +1,26 @@
+/// Command after changes in main files and include this changes
+./build-polymer-for-specific-llvm-build.sh
+
 
 /// Command to run mlir input code 
 ./build/bin/polymer-opt -reg2mem -insert-redundant-load -extract-scop-stmt -pluto-opt -debug test/archive/PlutoTransform/matmul.mlir
+
+
+/// Git commands that we need regularly
+
+git stage .
+
+git commit -m "..."
+
+git status
+
+git checkout branch_name
+
+git branch -la
+
+git 
+
+
+git mv output-files/polymer-commit-bda08-forOp/ output-files/1.polymer-commit-bda08-forOp
+
+ git remote -v
