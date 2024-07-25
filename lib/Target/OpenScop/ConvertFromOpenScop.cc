@@ -760,9 +760,16 @@ LogicalResult AffineExprBuilder::process(clast_reduction *expr, llvm::SmallVecto
     fclose(process_clast_reduction_output);
 
 
-    if (failed(process(expr->elts[0], affExprs)))
+    if (failed(process(expr->elts[0], affExprs))) {
+
+      std::printf("[process(clast_reduction *expr...) inside first if and then nested if]expr->elts[0], affExprs\n");
       return failure();
+
+    } 
+
+    std::printf("[process(clast_reduction *expr...) inside first if and after nested if]expr->elts[0], affExprs\n");
     return success();
+  
   }
 
   switch (expr->type) {
@@ -1742,31 +1749,31 @@ LogicalResult Importer::getAffineLoopBound(clast_expr *expr,
   ordered_json loopBoundInfos;
   char file_contents[1000];
 
-  /// Dump the clast expr in a file for lower bound
+  /// Dump the clast expr in a file for bound
   FILE *clast_for_output = fopen("output-files/1.polymer-commit-bda08-forOp/5.clast_for.txt", "w+");
   
   clast_pprint_expr(options, clast_for_output, expr);
   
   fclose(clast_for_output);
 
-  /// Read the lower bound from the file
+  /// Read the bound from the file
   clast_for_output = fopen("output-files/1.polymer-commit-bda08-forOp/5.clast_for.txt", "r");
 
-  /// Read the contents one by one and store in a string variable for lower bound
+  /// Read the contents one by one and store in a string variable for bound
   std::string boundStr;
   while (fgets(file_contents, sizeof(file_contents), clast_for_output)) {
     boundStr += file_contents;
   }
   fclose(clast_for_output);
   
-  /// Log the lower bound
-  loopBoundInfos["LoopBound"] = boundStr;
+  /// Loop bound
+  boundStr = "Loop Bound "+ boundStr;
 
   
   
 
   /// Append the loop data to the trace for this function call
-  trace["processStmt(clast_for *forStmt)"][std::to_string(counter)]["getAffineLoopBound()"]["loop bounds"].push_back(loopBoundInfos);
+  // trace["processStmt(clast_for *forStmt)"][std::to_string(counter)]["loop bound"]["bound-input"] = boundStr;
 
 
 
@@ -1814,7 +1821,7 @@ LogicalResult Importer::getAffineLoopBound(clast_expr *expr,
 
 
   /// F: Dump the boundexprs after processClastLoopBound
-  trace["processStmt(clast_for *forStmt)"][std::to_string(counter)]["getAffineLoopBound()"]["after processClastLoopBound()"]["boundExprs"].push_back(stringStream);
+  trace["processStmt(clast_for *forStmt)"][std::to_string(counter)][boundStr]["getAffineLoopBound()"]["after processClastLoopBound()"]["boundExprs"] = stringStream;
 
 
   // Insert dim operands.
@@ -1828,15 +1835,15 @@ LogicalResult Importer::getAffineLoopBound(clast_expr *expr,
 
   /// @F: My Snitch
   for (const auto &entry : builder.dimNames) {
-    trace["processStmt(clast_for *forStmt)"][std::to_string(counter)]["getAffineLoopBound()"]["builder.dimNames"][entry.first().str()] = entry.second;
+    trace["processStmt(clast_for *forStmt)"][std::to_string(counter)][boundStr]["getAffineLoopBound()"]["builder.dimNames"][entry.first().str()] = entry.second;
   }
 
   for (const auto &entry : builder.symbolNames) {
-    trace["processStmt(clast_for *forStmt)"][std::to_string(counter)]["getAffineLoopBound()"]["builder.symbolNames"][entry.first().str()] = entry.second;
+    trace["processStmt(clast_for *forStmt)"][std::to_string(counter)][boundStr]["getAffineLoopBound()"]["builder.symbolNames"][entry.first().str()] = entry.second;
   }
 
-  trace["processStmt(clast_for *forStmt)"][std::to_string(counter)]["getAffineLoopBound()"]["builder.dimNames.size"].push_back(numDims);
-  trace["processStmt(clast_for *forStmt)"][std::to_string(counter)]["getAffineLoopBound()"]["builder.symbolNames.size"].push_back(numSymbols);
+  trace["processStmt(clast_for *forStmt)"][std::to_string(counter)][boundStr]["getAffineLoopBound()"]["builder.dimNames.size"] = numDims;
+  trace["processStmt(clast_for *forStmt)"][std::to_string(counter)][boundStr]["getAffineLoopBound()"]["builder.symbolNames.size"] = numSymbols;
 
 
 

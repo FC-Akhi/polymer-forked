@@ -5,19 +5,19 @@
         },
         "initializeFuncOpInterface()": {
             "oslValueTable": {
-                "%1 = memref.alloc() : memref<64x64xf32>": [
-                    "A2"
-                ],
                 "<block argument> of type 'index' at index: 0": [
                     "i2",
-                    "i0",
-                    "i1"
+                    "i1",
+                    "i0"
+                ],
+                "%2 = memref.alloc() : memref<64x64xf32>": [
+                    "A3"
                 ],
                 "%0 = memref.alloc() : memref<64x64xf32>": [
                     "A1"
                 ],
-                "%2 = memref.alloc() : memref<64x64xf32>": [
-                    "A3"
+                "%1 = memref.alloc() : memref<64x64xf32>": [
+                    "A2"
                 ]
             },
             "getSourceFuncOp()": {
@@ -108,119 +108,106 @@
         "2": {
             "Input": "for (t1=0;t1<=1;t1++) {\n  for (t2=0;t2<=1;t2++) {\n    for (t3=0;t3<=1;t3++) {\n      for (t4=32*t1;t4<=32*t1+31;t4++) {\n        for (t5=32*t3;t5<=32*t3+31;t5++) {\n          for (t6=32*t2;t6<=32*t2+31;t6++) {\n            S0(t4, t6, t5)\n          }\n        }\n      }\n    }\n  }\n}\n",
             "getAffineLoopBound()": {
-                "Some Inputs": "forStmt->LB, lbOperands, lbMap or forStmt->UB, ubOperands, ubMap",
-                "loop bounds": [
-                    {
-                        "LoopBound": "0"
+                "Some Inputs": "forStmt->LB, lbOperands, lbMap or forStmt->UB, ubOperands, ubMap"
+            },
+            "Loop Bound 0": {
+                "getAffineLoopBound()": {
+                    "after processClastLoopBound()": {
+                        "boundExprs": "Affine Expression after processClastLoopBound(): 0"
                     },
-                    {
-                        "LoopBound": "1"
-                    }
-                ],
-                "after processClastLoopBound()": {
-                    "boundExprs": [
-                        "Affine Expression after processClastLoopBound(): 0",
-                        "Affine Expression after processClastLoopBound(): 2"
-                    ]
-                },
-                "builder.dimNames.size": [
-                    0,
-                    0
-                ],
-                "builder.symbolNames.size": [
-                    0,
-                    0
-                ]
+                    "builder.dimNames.size": 0,
+                    "builder.symbolNames.size": 0
+                }
+            },
+            "Loop Bound 1": {
+                "getAffineLoopBound()": {
+                    "after processClastLoopBound()": {
+                        "boundExprs": "Affine Expression after processClastLoopBound(): 2"
+                    },
+                    "builder.dimNames.size": 0,
+                    "builder.symbolNames.size": 0
+                }
             },
             "forOp after IR gen": "affine.for %arg0 = 0 to 2 {\n}"
         },
         "3": {
             "Input": "for (t2=0;t2<=1;t2++) {\n  for (t3=0;t3<=1;t3++) {\n    for (t4=32*t1;t4<=32*t1+31;t4++) {\n      for (t5=32*t3;t5<=32*t3+31;t5++) {\n        for (t6=32*t2;t6<=32*t2+31;t6++) {\n          S0(t4, t6, t5)\n        }\n      }\n    }\n  }\n}\n",
             "getAffineLoopBound()": {
-                "Some Inputs": "forStmt->LB, lbOperands, lbMap or forStmt->UB, ubOperands, ubMap",
-                "loop bounds": [
-                    {
-                        "LoopBound": "0"
+                "Some Inputs": "forStmt->LB, lbOperands, lbMap or forStmt->UB, ubOperands, ubMap"
+            },
+            "Loop Bound 0": {
+                "getAffineLoopBound()": {
+                    "after processClastLoopBound()": {
+                        "boundExprs": "Affine Expression after processClastLoopBound(): 0"
                     },
-                    {
-                        "LoopBound": "1"
-                    }
-                ],
-                "after processClastLoopBound()": {
-                    "boundExprs": [
-                        "Affine Expression after processClastLoopBound(): 0",
-                        "Affine Expression after processClastLoopBound(): 2"
-                    ]
-                },
-                "builder.dimNames.size": [
-                    0,
-                    0
-                ],
-                "builder.symbolNames.size": [
-                    0,
-                    0
-                ]
+                    "builder.dimNames.size": 0,
+                    "builder.symbolNames.size": 0
+                }
+            },
+            "Loop Bound 1": {
+                "getAffineLoopBound()": {
+                    "after processClastLoopBound()": {
+                        "boundExprs": "Affine Expression after processClastLoopBound(): 2"
+                    },
+                    "builder.dimNames.size": 0,
+                    "builder.symbolNames.size": 0
+                }
             },
             "forOp after IR gen": "affine.for %arg1 = 0 to 2 {\n}"
         },
         "4": {
             "Input": "for (t3=0;t3<=1;t3++) {\n  for (t4=32*t1;t4<=32*t1+31;t4++) {\n    for (t5=32*t3;t5<=32*t3+31;t5++) {\n      for (t6=32*t2;t6<=32*t2+31;t6++) {\n        S0(t4, t6, t5)\n      }\n    }\n  }\n}\n",
             "getAffineLoopBound()": {
-                "Some Inputs": "forStmt->LB, lbOperands, lbMap or forStmt->UB, ubOperands, ubMap",
-                "loop bounds": [
-                    {
-                        "LoopBound": "0"
+                "Some Inputs": "forStmt->LB, lbOperands, lbMap or forStmt->UB, ubOperands, ubMap"
+            },
+            "Loop Bound 0": {
+                "getAffineLoopBound()": {
+                    "after processClastLoopBound()": {
+                        "boundExprs": "Affine Expression after processClastLoopBound(): 0"
                     },
-                    {
-                        "LoopBound": "1"
-                    }
-                ],
-                "after processClastLoopBound()": {
-                    "boundExprs": [
-                        "Affine Expression after processClastLoopBound(): 0",
-                        "Affine Expression after processClastLoopBound(): 2"
-                    ]
-                },
-                "builder.dimNames.size": [
-                    0,
-                    0
-                ],
-                "builder.symbolNames.size": [
-                    0,
-                    0
-                ]
+                    "builder.dimNames.size": 0,
+                    "builder.symbolNames.size": 0
+                }
+            },
+            "Loop Bound 1": {
+                "getAffineLoopBound()": {
+                    "after processClastLoopBound()": {
+                        "boundExprs": "Affine Expression after processClastLoopBound(): 2"
+                    },
+                    "builder.dimNames.size": 0,
+                    "builder.symbolNames.size": 0
+                }
             },
             "forOp after IR gen": "affine.for %arg2 = 0 to 2 {\n}"
         },
         "5": {
             "Input": "for (t4=32*t1;t4<=32*t1+31;t4++) {\n  for (t5=32*t3;t5<=32*t3+31;t5++) {\n    for (t6=32*t2;t6<=32*t2+31;t6++) {\n      S0(t4, t6, t5)\n    }\n  }\n}\n",
             "getAffineLoopBound()": {
-                "Some Inputs": "forStmt->LB, lbOperands, lbMap or forStmt->UB, ubOperands, ubMap",
-                "loop bounds": [
-                    {
-                        "LoopBound": "32*t1"
+                "Some Inputs": "forStmt->LB, lbOperands, lbMap or forStmt->UB, ubOperands, ubMap"
+            },
+            "Loop Bound 32*t1": {
+                "getAffineLoopBound()": {
+                    "after processClastLoopBound()": {
+                        "boundExprs": "Affine Expression after processClastLoopBound(): d0 * 32"
                     },
-                    {
-                        "LoopBound": "32*t1+31"
-                    }
-                ],
-                "after processClastLoopBound()": {
-                    "boundExprs": [
-                        "Affine Expression after processClastLoopBound(): d0 * 32",
-                        "Affine Expression after processClastLoopBound(): d0 * 32 + 32"
-                    ]
-                },
-                "builder.dimNames": {
-                    "t1": 0
-                },
-                "builder.dimNames.size": [
-                    1,
-                    1
-                ],
-                "builder.symbolNames.size": [
-                    0,
-                    0
-                ]
+                    "builder.dimNames": {
+                        "t1": 0
+                    },
+                    "builder.dimNames.size": 1,
+                    "builder.symbolNames.size": 0
+                }
+            },
+            "Loop Bound 32*t1+31": {
+                "getAffineLoopBound()": {
+                    "after processClastLoopBound()": {
+                        "boundExprs": "Affine Expression after processClastLoopBound(): d0 * 32 + 32"
+                    },
+                    "builder.dimNames": {
+                        "t1": 0
+                    },
+                    "builder.dimNames.size": 1,
+                    "builder.symbolNames.size": 0
+                }
             },
             "After getAffineLoopBound() operation": {
                 "Operands": {
@@ -237,32 +224,31 @@
         "6": {
             "Input": "for (t5=32*t3;t5<=32*t3+31;t5++) {\n  for (t6=32*t2;t6<=32*t2+31;t6++) {\n    S0(t4, t6, t5)\n  }\n}\n",
             "getAffineLoopBound()": {
-                "Some Inputs": "forStmt->LB, lbOperands, lbMap or forStmt->UB, ubOperands, ubMap",
-                "loop bounds": [
-                    {
-                        "LoopBound": "32*t3"
+                "Some Inputs": "forStmt->LB, lbOperands, lbMap or forStmt->UB, ubOperands, ubMap"
+            },
+            "Loop Bound 32*t3": {
+                "getAffineLoopBound()": {
+                    "after processClastLoopBound()": {
+                        "boundExprs": "Affine Expression after processClastLoopBound(): d0 * 32"
                     },
-                    {
-                        "LoopBound": "32*t3+31"
-                    }
-                ],
-                "after processClastLoopBound()": {
-                    "boundExprs": [
-                        "Affine Expression after processClastLoopBound(): d0 * 32",
-                        "Affine Expression after processClastLoopBound(): d0 * 32 + 32"
-                    ]
-                },
-                "builder.dimNames": {
-                    "t3": 0
-                },
-                "builder.dimNames.size": [
-                    1,
-                    1
-                ],
-                "builder.symbolNames.size": [
-                    0,
-                    0
-                ]
+                    "builder.dimNames": {
+                        "t3": 0
+                    },
+                    "builder.dimNames.size": 1,
+                    "builder.symbolNames.size": 0
+                }
+            },
+            "Loop Bound 32*t3+31": {
+                "getAffineLoopBound()": {
+                    "after processClastLoopBound()": {
+                        "boundExprs": "Affine Expression after processClastLoopBound(): d0 * 32 + 32"
+                    },
+                    "builder.dimNames": {
+                        "t3": 0
+                    },
+                    "builder.dimNames.size": 1,
+                    "builder.symbolNames.size": 0
+                }
             },
             "After getAffineLoopBound() operation": {
                 "Operands": {
@@ -279,32 +265,31 @@
         "7": {
             "Input": "for (t6=32*t2;t6<=32*t2+31;t6++) {\n  S0(t4, t6, t5)\n}\n",
             "getAffineLoopBound()": {
-                "Some Inputs": "forStmt->LB, lbOperands, lbMap or forStmt->UB, ubOperands, ubMap",
-                "loop bounds": [
-                    {
-                        "LoopBound": "32*t2"
+                "Some Inputs": "forStmt->LB, lbOperands, lbMap or forStmt->UB, ubOperands, ubMap"
+            },
+            "Loop Bound 32*t2": {
+                "getAffineLoopBound()": {
+                    "after processClastLoopBound()": {
+                        "boundExprs": "Affine Expression after processClastLoopBound(): d0 * 32"
                     },
-                    {
-                        "LoopBound": "32*t2+31"
-                    }
-                ],
-                "after processClastLoopBound()": {
-                    "boundExprs": [
-                        "Affine Expression after processClastLoopBound(): d0 * 32",
-                        "Affine Expression after processClastLoopBound(): d0 * 32 + 32"
-                    ]
-                },
-                "builder.dimNames": {
-                    "t2": 0
-                },
-                "builder.dimNames.size": [
-                    1,
-                    1
-                ],
-                "builder.symbolNames.size": [
-                    0,
-                    0
-                ]
+                    "builder.dimNames": {
+                        "t2": 0
+                    },
+                    "builder.dimNames.size": 1,
+                    "builder.symbolNames.size": 0
+                }
+            },
+            "Loop Bound 32*t2+31": {
+                "getAffineLoopBound()": {
+                    "after processClastLoopBound()": {
+                        "boundExprs": "Affine Expression after processClastLoopBound(): d0 * 32 + 32"
+                    },
+                    "builder.dimNames": {
+                        "t2": 0
+                    },
+                    "builder.dimNames.size": 1,
+                    "builder.symbolNames.size": 0
+                }
             },
             "After getAffineLoopBound() operation": {
                 "Operands": {
