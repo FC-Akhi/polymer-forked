@@ -1,23 +1,23 @@
 {
     "processStmt(clast_root *rootStmt)": {
-        "Input": {
-            "1": "for (t1=0;t1<=1;t1++) {\n  for (t2=0;t2<=1;t2++) {\n    for (t3=0;t3<=1;t3++) {\n      for (t4=32*t1;t4<=32*t1+31;t4++) {\n        for (t5=32*t3;t5<=32*t3+31;t5++) {\n          for (t6=32*t2;t6<=32*t2+31;t6++) {\n            S0(t4, t6, t5)\n          }\n        }\n      }\n    }\n  }\n}\n"
+        "1": {
+            "Input": "for (t1=0;t1<=1;t1++) {\n  for (t2=0;t2<=1;t2++) {\n    for (t3=0;t3<=1;t3++) {\n      for (t4=32*t1;t4<=32*t1+31;t4++) {\n        for (t5=32*t3;t5<=32*t3+31;t5++) {\n          for (t6=32*t2;t6<=32*t2+31;t6++) {\n            S0(t4, t6, t5)\n          }\n        }\n      }\n    }\n  }\n}\n"
         },
         "initializeFuncOpInterface()": {
             "oslValueTable": {
                 "%1 = memref.alloc() : memref<64x64xf32>": [
                     "A2"
                 ],
-                "%2 = memref.alloc() : memref<64x64xf32>": [
-                    "A3"
-                ],
                 "<block argument> of type 'index' at index: 0": [
-                    "i1",
+                    "i2",
                     "i0",
-                    "i2"
+                    "i1"
                 ],
                 "%0 = memref.alloc() : memref<64x64xf32>": [
                     "A1"
+                ],
+                "%2 = memref.alloc() : memref<64x64xf32>": [
+                    "A3"
                 ]
             },
             "getSourceFuncOp()": {
@@ -88,53 +88,235 @@
                 ]
             }
         },
-        "New funcOp after initializeSymbolTable() processes": "func @matmul_opt() {\n  %0 = memref.alloc() : memref<64x64xf32>\n  %1 = memref.alloc() : memref<64x64xf32>\n  %2 = memref.alloc() : memref<64x64xf32>\n  %c0 = arith.constant 0 : index\n  return\n}"
+        "New funcOp after initializeSymbolTable() processes": "func @matmul_opt() {\n  %0 = memref.alloc() : memref<64x64xf32>\n  %1 = memref.alloc() : memref<64x64xf32>\n  %2 = memref.alloc() : memref<64x64xf32>\n  %c0 = arith.constant 0 : index\n  return\n}",
+        "symbolTable": {
+            "zero": [
+                "%c0 = arith.constant 0 : index"
+            ],
+            "A1": [
+                "%2 = memref.alloc() : memref<64x64xf32>"
+            ],
+            "A2": [
+                "%1 = memref.alloc() : memref<64x64xf32>"
+            ],
+            "A3": [
+                "%0 = memref.alloc() : memref<64x64xf32>"
+            ]
+        }
     },
     "processStmt(clast_for *forStmt)": {
-        "Input": {
-            "2": "for (t1=0;t1<=1;t1++) {\n  for (t2=0;t2<=1;t2++) {\n    for (t3=0;t3<=1;t3++) {\n      for (t4=32*t1;t4<=32*t1+31;t4++) {\n        for (t5=32*t3;t5<=32*t3+31;t5++) {\n          for (t6=32*t2;t6<=32*t2+31;t6++) {\n            S0(t4, t6, t5)\n          }\n        }\n      }\n    }\n  }\n}\n",
-            "3": "for (t2=0;t2<=1;t2++) {\n  for (t3=0;t3<=1;t3++) {\n    for (t4=32*t1;t4<=32*t1+31;t4++) {\n      for (t5=32*t3;t5<=32*t3+31;t5++) {\n        for (t6=32*t2;t6<=32*t2+31;t6++) {\n          S0(t4, t6, t5)\n        }\n      }\n    }\n  }\n}\n",
-            "4": "for (t3=0;t3<=1;t3++) {\n  for (t4=32*t1;t4<=32*t1+31;t4++) {\n    for (t5=32*t3;t5<=32*t3+31;t5++) {\n      for (t6=32*t2;t6<=32*t2+31;t6++) {\n        S0(t4, t6, t5)\n      }\n    }\n  }\n}\n",
-            "5": "for (t4=32*t1;t4<=32*t1+31;t4++) {\n  for (t5=32*t3;t5<=32*t3+31;t5++) {\n    for (t6=32*t2;t6<=32*t2+31;t6++) {\n      S0(t4, t6, t5)\n    }\n  }\n}\n",
-            "6": "for (t5=32*t3;t5<=32*t3+31;t5++) {\n  for (t6=32*t2;t6<=32*t2+31;t6++) {\n    S0(t4, t6, t5)\n  }\n}\n",
-            "7": "for (t6=32*t2;t6<=32*t2+31;t6++) {\n  S0(t4, t6, t5)\n}\n"
-        },
-        "getAffineLoopBound()": {
-            "Inputs": {
-                "Some Inputs": "lbOperands, ubOperands, lbMap, ubMap",
+        "2": {
+            "Input": "for (t1=0;t1<=1;t1++) {\n  for (t2=0;t2<=1;t2++) {\n    for (t3=0;t3<=1;t3++) {\n      for (t4=32*t1;t4<=32*t1+31;t4++) {\n        for (t5=32*t3;t5<=32*t3+31;t5++) {\n          for (t6=32*t2;t6<=32*t2+31;t6++) {\n            S0(t4, t6, t5)\n          }\n        }\n      }\n    }\n  }\n}\n",
+            "getAffineLoopBound()": {
+                "Some Inputs": "forStmt->LB, lbOperands, lbMap or forStmt->UB, ubOperands, ubMap",
                 "loop bounds": [
                     {
-                        "lowerBound": "0",
-                        "upperBound": "1"
+                        "LoopBound": "0"
                     },
                     {
-                        "lowerBound": "0",
-                        "upperBound": "1"
-                    },
-                    {
-                        "lowerBound": "0",
-                        "upperBound": "1"
-                    },
-                    {
-                        "lowerBound": "32*t1",
-                        "upperBound": "32*t1+31"
-                    },
-                    {
-                        "lowerBound": "32*t3",
-                        "upperBound": "32*t3+31"
-                    },
-                    {
-                        "lowerBound": "32*t2",
-                        "upperBound": "32*t2+31"
+                        "LoopBound": "1"
                     }
+                ],
+                "after processClastLoopBound()": {
+                    "boundExprs": [
+                        "Affine Expression after processClastLoopBound(): 0",
+                        "Affine Expression after processClastLoopBound(): 2"
+                    ]
+                },
+                "builder.dimNames.size": [
+                    0,
+                    0
+                ],
+                "builder.symbolNames.size": [
+                    0,
+                    0
                 ]
             },
-            "AffineExprBuilder class instance": {
-                "Some Inputs": "context, symTable, symbolTable, scop, options"
+            "forOp after IR gen": "affine.for %arg0 = 0 to 2 {\n}"
+        },
+        "3": {
+            "Input": "for (t2=0;t2<=1;t2++) {\n  for (t3=0;t3<=1;t3++) {\n    for (t4=32*t1;t4<=32*t1+31;t4++) {\n      for (t5=32*t3;t5<=32*t3+31;t5++) {\n        for (t6=32*t2;t6<=32*t2+31;t6++) {\n          S0(t4, t6, t5)\n        }\n      }\n    }\n  }\n}\n",
+            "getAffineLoopBound()": {
+                "Some Inputs": "forStmt->LB, lbOperands, lbMap or forStmt->UB, ubOperands, ubMap",
+                "loop bounds": [
+                    {
+                        "LoopBound": "0"
+                    },
+                    {
+                        "LoopBound": "1"
+                    }
+                ],
+                "after processClastLoopBound()": {
+                    "boundExprs": [
+                        "Affine Expression after processClastLoopBound(): 0",
+                        "Affine Expression after processClastLoopBound(): 2"
+                    ]
+                },
+                "builder.dimNames.size": [
+                    0,
+                    0
+                ],
+                "builder.symbolNames.size": [
+                    0,
+                    0
+                ]
             },
-            "processClastLoopBound()": {
-                "Inputs": "loop bound from getAffineLoopBound() one at a time, builder, boundExprs, options"
-            }
+            "forOp after IR gen": "affine.for %arg1 = 0 to 2 {\n}"
+        },
+        "4": {
+            "Input": "for (t3=0;t3<=1;t3++) {\n  for (t4=32*t1;t4<=32*t1+31;t4++) {\n    for (t5=32*t3;t5<=32*t3+31;t5++) {\n      for (t6=32*t2;t6<=32*t2+31;t6++) {\n        S0(t4, t6, t5)\n      }\n    }\n  }\n}\n",
+            "getAffineLoopBound()": {
+                "Some Inputs": "forStmt->LB, lbOperands, lbMap or forStmt->UB, ubOperands, ubMap",
+                "loop bounds": [
+                    {
+                        "LoopBound": "0"
+                    },
+                    {
+                        "LoopBound": "1"
+                    }
+                ],
+                "after processClastLoopBound()": {
+                    "boundExprs": [
+                        "Affine Expression after processClastLoopBound(): 0",
+                        "Affine Expression after processClastLoopBound(): 2"
+                    ]
+                },
+                "builder.dimNames.size": [
+                    0,
+                    0
+                ],
+                "builder.symbolNames.size": [
+                    0,
+                    0
+                ]
+            },
+            "forOp after IR gen": "affine.for %arg2 = 0 to 2 {\n}"
+        },
+        "5": {
+            "Input": "for (t4=32*t1;t4<=32*t1+31;t4++) {\n  for (t5=32*t3;t5<=32*t3+31;t5++) {\n    for (t6=32*t2;t6<=32*t2+31;t6++) {\n      S0(t4, t6, t5)\n    }\n  }\n}\n",
+            "getAffineLoopBound()": {
+                "Some Inputs": "forStmt->LB, lbOperands, lbMap or forStmt->UB, ubOperands, ubMap",
+                "loop bounds": [
+                    {
+                        "LoopBound": "32*t1"
+                    },
+                    {
+                        "LoopBound": "32*t1+31"
+                    }
+                ],
+                "after processClastLoopBound()": {
+                    "boundExprs": [
+                        "Affine Expression after processClastLoopBound(): d0 * 32",
+                        "Affine Expression after processClastLoopBound(): d0 * 32 + 32"
+                    ]
+                },
+                "builder.dimNames": {
+                    "t1": 0
+                },
+                "builder.dimNames.size": [
+                    1,
+                    1
+                ],
+                "builder.symbolNames.size": [
+                    0,
+                    0
+                ]
+            },
+            "After getAffineLoopBound() operation": {
+                "Operands": {
+                    "lbOperands": [
+                        "<block argument> of type 'index' at index: 0"
+                    ],
+                    "ubOperands": [
+                        "<block argument> of type 'index' at index: 0"
+                    ]
+                }
+            },
+            "forOp after IR gen": "affine.for %arg3 = affine_map<(d0) -> (d0 * 32)>(%arg0) to affine_map<(d0) -> (d0 * 32 + 32)>(%arg0) {\n}"
+        },
+        "6": {
+            "Input": "for (t5=32*t3;t5<=32*t3+31;t5++) {\n  for (t6=32*t2;t6<=32*t2+31;t6++) {\n    S0(t4, t6, t5)\n  }\n}\n",
+            "getAffineLoopBound()": {
+                "Some Inputs": "forStmt->LB, lbOperands, lbMap or forStmt->UB, ubOperands, ubMap",
+                "loop bounds": [
+                    {
+                        "LoopBound": "32*t3"
+                    },
+                    {
+                        "LoopBound": "32*t3+31"
+                    }
+                ],
+                "after processClastLoopBound()": {
+                    "boundExprs": [
+                        "Affine Expression after processClastLoopBound(): d0 * 32",
+                        "Affine Expression after processClastLoopBound(): d0 * 32 + 32"
+                    ]
+                },
+                "builder.dimNames": {
+                    "t3": 0
+                },
+                "builder.dimNames.size": [
+                    1,
+                    1
+                ],
+                "builder.symbolNames.size": [
+                    0,
+                    0
+                ]
+            },
+            "After getAffineLoopBound() operation": {
+                "Operands": {
+                    "lbOperands": [
+                        "<block argument> of type 'index' at index: 0"
+                    ],
+                    "ubOperands": [
+                        "<block argument> of type 'index' at index: 0"
+                    ]
+                }
+            },
+            "forOp after IR gen": "affine.for %arg4 = affine_map<(d0) -> (d0 * 32)>(%arg2) to affine_map<(d0) -> (d0 * 32 + 32)>(%arg2) {\n}"
+        },
+        "7": {
+            "Input": "for (t6=32*t2;t6<=32*t2+31;t6++) {\n  S0(t4, t6, t5)\n}\n",
+            "getAffineLoopBound()": {
+                "Some Inputs": "forStmt->LB, lbOperands, lbMap or forStmt->UB, ubOperands, ubMap",
+                "loop bounds": [
+                    {
+                        "LoopBound": "32*t2"
+                    },
+                    {
+                        "LoopBound": "32*t2+31"
+                    }
+                ],
+                "after processClastLoopBound()": {
+                    "boundExprs": [
+                        "Affine Expression after processClastLoopBound(): d0 * 32",
+                        "Affine Expression after processClastLoopBound(): d0 * 32 + 32"
+                    ]
+                },
+                "builder.dimNames": {
+                    "t2": 0
+                },
+                "builder.dimNames.size": [
+                    1,
+                    1
+                ],
+                "builder.symbolNames.size": [
+                    0,
+                    0
+                ]
+            },
+            "After getAffineLoopBound() operation": {
+                "Operands": {
+                    "lbOperands": [
+                        "<block argument> of type 'index' at index: 0"
+                    ],
+                    "ubOperands": [
+                        "<block argument> of type 'index' at index: 0"
+                    ]
+                }
+            },
+            "forOp after IR gen": "affine.for %arg5 = affine_map<(d0) -> (d0 * 32)>(%arg1) to affine_map<(d0) -> (d0 * 32 + 32)>(%arg1) {\n}"
         }
     }
 }

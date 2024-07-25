@@ -52,8 +52,7 @@ extern "C" {
 #include "llvm/Support/FormatVariadic.h"
 #include "llvm/Support/SourceMgr.h"
 #include <llvm/Support/raw_ostream.h>
-
-
+#include <sstream>
 
 
 #include "polymer/Support/nlohmann/json.hpp"
@@ -77,7 +76,7 @@ typedef llvm::StringMap<std::string> IterScatNameMap;
 ordered_json trace;
 
 int counter = 0;
-
+int i = 1;
 
 
 
@@ -156,8 +155,213 @@ std::string clast_expr_to_string(clast_expr *expr) {
 
 
 
+// static void pprint_sum(struct cloogoptions *opt,
+// 			FILE *dst, struct clast_reduction *r);
 
-/// @brief AffineExprBuilder class
+// static void pprint_minmax_f(struct cloogoptions *info,
+// 			FILE *dst, struct clast_reduction *r);
+// static void pprint_minmax_c(struct cloogoptions *info,
+// 			FILE *dst, struct clast_reduction *r);
+
+static void pprint_expr(struct cloogoptions *i, FILE *dst, struct clast_expr *e);
+static void pprint_name(FILE *dst, struct clast_name *n);
+static void pprint_term(struct cloogoptions *i, FILE *dst, struct clast_term *t);
+static void pprint_reduction(struct cloogoptions *i, FILE *dst, struct clast_reduction *r);
+static void pprint_binary(struct cloogoptions *i, FILE *dst, struct clast_binary *b);
+
+
+
+
+void pprint_expr(struct cloogoptions *i, FILE *dst, struct clast_expr *e)
+{
+    if (!e)
+	return;
+    switch (e->type) {
+    case clast_expr_name:
+	pprint_name(dst, (struct clast_name*) e);
+	break;
+    case clast_expr_term:
+	pprint_term(i, dst, (struct clast_term*) e);
+	break;
+    case clast_expr_red:
+	pprint_reduction(i, dst, (struct clast_reduction*) e);
+	break;
+    case clast_expr_bin:
+	pprint_binary(i, dst, (struct clast_binary*) e);
+	break;
+    default:
+	assert(0);
+    }
+}
+
+
+void pprint_sum(struct cloogoptions *opt, FILE *dst, struct clast_reduction *r)
+{
+    int i;
+    struct clast_term *t;
+
+    assert(r->n >= 1);
+    assert(r->elts[0]->type == clast_expr_term);
+    t = (struct clast_term *) r->elts[0];
+    pprint_term(opt, dst, t);
+
+    for (i = 1; i < r->n; ++i) {
+	assert(r->elts[i]->type == clast_expr_term);
+	t = (struct clast_term *) r->elts[i];
+	if (cloog_int_is_pos(t->val))
+	    fprintf(dst, "+");
+	pprint_term(opt, dst, t);
+    }
+}
+
+
+void pprint_minmax_f(struct cloogoptions *info, FILE *dst, struct clast_reduction *r)
+{
+    int i;
+    if (r->n == 0)
+	return;
+    fprintf(dst, r->type == clast_red_max ? "MAX(" : "MIN(");
+    pprint_expr(info, dst, r->elts[0]);
+    for (i = 1; i < r->n; ++i) {
+	fprintf(dst, ",");
+	pprint_expr(info, dst, r->elts[i]);
+    }
+    fprintf(dst, ")");
+}
+
+void pprint_minmax_c(struct cloogoptions *info, FILE *dst, struct clast_reduction *r)
+{
+    int i;
+    for (i = 1; i < r->n; ++i)
+	fprintf(dst, r->type == clast_red_max ? "max(" : "min(");
+    if (r->n > 0)
+	pprint_expr(info, dst, r->elts[0]);
+    for (i = 1; i < r->n; ++i) {
+	fprintf(dst, ",");
+	pprint_expr(info, dst, r->elts[i]);
+	fprintf(dst, ")");
+    }
+}
+
+
+void pprint_name(FILE *dst, struct clast_name *n)
+{
+    fprintf(dst, "%s", n->name);
+}
+
+
+/**
+ * This function returns a string containing the printing of a value (possibly
+ * an iterator or a parameter with its coefficient or a constant).
+ * - val is the coefficient or constant value,
+ * - name is a string containing the name of the iterator or of the parameter,
+ */
+void pprint_term(struct cloogoptions *i, FILE *dst, struct clast_term *t)
+{
+    if (t->var) {
+	int group = t->var->type == clast_expr_red &&
+		    ((struct clast_reduction*) t->var)->n > 1;
+	if (cloog_int_is_one(t->val))
+	    ;
+	else if (cloog_int_is_neg_one(t->val))
+	    fprintf(dst, "-");
+        else {
+	    cloog_int_print(dst, t->val);
+	    fprintf(dst, "*");
+	}
+	if (group)
+	    fprintf(dst, "(");
+	pprint_expr(i, dst, t->var);
+	if (group)
+	    fprintf(dst, ")");
+    } else
+	cloog_int_print(dst, t->val);
+}
+
+
+void pprint_reduction(struct cloogoptions *i, FILE *dst, struct clast_reduction *r)
+{
+    switch (r->type) {
+      case clast_red_sum:
+        pprint_sum(i, dst, r);
+        break;
+      case clast_red_min:
+      case clast_red_max:
+        if (r->n == 1) {
+            pprint_expr(i, dst, r->elts[0]);
+            break;
+        }
+
+      if (i->language == CLOOG_LANGUAGE_FORTRAN)
+          pprint_minmax_f(i, dst, r);
+      else
+          pprint_minmax_c(i, dst, r);
+      break;
+        default:
+      assert(0);
+    }
+}
+
+
+
+void pprint_binary(struct cloogoptions *i, FILE *dst, struct clast_binary *b)
+{
+    const char *s1 = NULL, *s2 = NULL, *s3 = NULL;
+    int group = b->LHS->type == clast_expr_red &&
+		((struct clast_reduction*) b->LHS)->n > 1;
+    if (i->language == CLOOG_LANGUAGE_FORTRAN) {
+	switch (b->type) {
+	case clast_bin_fdiv:
+	    s1 = "FLOOR(REAL(", s2 = ")/REAL(", s3 = "))";
+	    break;
+	case clast_bin_cdiv:
+	    s1 = "CEILING(REAL(", s2 = ")/REAL(", s3 = "))";
+	    break;
+	case clast_bin_div:
+	    if (group)
+		s1 = "(", s2 = ")/", s3 = "";
+	    else
+		s1 = "", s2 = "/", s3 = "";
+	    break;
+	case clast_bin_mod:
+	    s1 = "MOD(", s2 = ", ", s3 = ")";
+	    break;
+	}
+    } else {
+	switch (b->type) {
+	case clast_bin_fdiv:
+	    s1 = "floord(", s2 = ",", s3 = ")";
+	    break;
+	case clast_bin_cdiv:
+	    s1 = "ceild(", s2 = ",", s3 = ")";
+	    break;
+	case clast_bin_div:
+	    if (group)
+		s1 = "(", s2 = ")/", s3 = "";
+	    else
+		s1 = "", s2 = "/", s3 = "";
+	    break;
+	case clast_bin_mod:
+	    if (group)
+		s1 = "(", s2 = ")%", s3 = "";
+	    else
+		s1 = "", s2 = "%", s3 = "";
+	    break;
+	}
+    }
+    fprintf(dst, "%s", s1);
+    pprint_expr(i, dst, b->LHS);
+    fprintf(dst, "%s", s2);
+    cloog_int_print(dst, b->RHS);
+    fprintf(dst, "%s", s3);
+}
+
+
+
+
+
+
+/// @brief AffineExprBuilder class 
 namespace {
 
   typedef llvm::StringMap<mlir::Value> SymbolTable;
@@ -262,24 +466,40 @@ LogicalResult AffineExprBuilder::process(clast_expr *expr, llvm::SmallVectorImpl
   switch (expr->type) {
 
   case clast_expr_name:
+
+    std::printf("[process(clast_expr *expr..)]clast_expr_name: step: %d\n", i);
+    std::printf("\n");
+    i++;
+
     if (failed(process(reinterpret_cast<clast_name *>(expr), affExprs)))
       return failure();
     break;
   
   
   case clast_expr_term:
+
+
+    std::printf("[process(clast_expr *expr..)]clast_expr_term: step: %d\n", i);
+    std::printf("\n");
+    i++;
+
     if (failed(process(reinterpret_cast<clast_term *>(expr), affExprs)))
       return failure();
     break;
   
   
-  case clast_expr_bin:
-    if (failed(process(reinterpret_cast<clast_binary *>(expr), affExprs)))
-      return failure();
-    break;
+  // case clast_expr_bin:
+  //   if (failed(process(reinterpret_cast<clast_binary *>(expr), affExprs)))
+  //     return failure();
+  //   break;
   
   
   case clast_expr_red:
+
+    std::printf("[process(clast_expr *expr..)]clast_expr_red: step: %d\n", i);
+    std::printf("\n");
+    i++;
+
     if (failed(process(reinterpret_cast<clast_reduction *>(expr), affExprs)))
       return failure();
     break;
@@ -300,11 +520,20 @@ LogicalResult AffineExprBuilder::process(clast_expr *expr, llvm::SmallVectorImpl
 /// TODO: handle the dim case.
 LogicalResult AffineExprBuilder::process(clast_name *expr, llvm::SmallVectorImpl<AffineExpr> &affExprs) {
   
+  /// F: Iterate over the symbolTable
+  // for (auto it = symbolTable->begin(), end = symbolTable->end(); it != end; ++it) {
+  //   std::string key = it->getKey().str();
+  //   mlir::Value value = it->getValue();
 
+  //   std::string valueStr = valueToString(value);
+
+  //   // Insert into JSON object, using an array to store multiple values
+  //   trace["processStmt(clast_for *forStmt)"]["getAffineLoopBound()"]["processClastLoopBound()"]["process(clast_term *expr)"]["process(clast_name *expr)"][key].push_back(valueStr);
+  // }
+  
   /// Check if the Name is a Symbol
   if (scop->isSymbol(expr->name)) {
 
-    // std::printf("[process(clast_name)]I AM HIT\n");
 
     /// Start processing the Symbol
     /// This Check if the Symbol is Already in symbolNames map. That means it has been proceesed before.
@@ -328,8 +557,11 @@ LogicalResult AffineExprBuilder::process(clast_name *expr, llvm::SmallVectorImpl
 
   } 
   
+
+  /// Here symbolTable is of SymbolTable type which is declared from AffinExprBuilder
   else if (mlir::Value iv = symbolTable->lookup(expr->name)) {
-  
+    
+
     if (dimNames.find(expr->name) != dimNames.end())
   
       affExprs.push_back(b.getAffineDimExpr(dimNames[expr->name]));
@@ -351,35 +583,10 @@ LogicalResult AffineExprBuilder::process(clast_name *expr, llvm::SmallVectorImpl
   
   }
 
-  /// F: Iterate over the valueMap
-  // std::cout << "\n" <<"Printing ValueMap" << "\n";
-
-  // for (const auto& entry : valueMap) {
-  //   mlir::Value key = entry.first;
-  //   std::string value = entry.second;
-
-  //   std::string keyStr = valueToString(key);
-
-
-  //   std::cout << "Key: " << keyStr << ", Value: " << value << std::endl;
-
-  //   /// Insert into JSON object, using an array to store multiple values
-  //   // oslValueJson[keyStr].push_back(value);
-  // }
-
-
-
-
   return success();
 
 }
 
-//  void AffineExpr::dump() const {
-
-//   print(llvm::errs());
-//   llvm::errs() << "\n";
- 
-//  }
 
 
 LogicalResult AffineExprBuilder::process(clast_term *expr, llvm::SmallVectorImpl<AffineExpr> &affExprs) {
@@ -394,18 +601,41 @@ LogicalResult AffineExprBuilder::process(clast_term *expr, llvm::SmallVectorImpl
     return failure();
 
 
+  /// @F: My snitch=============================================================================================
+  char file_contents[1000];
+
+  /// Dump the clast_term clast_expr	expr in a file for expression(eg:32*t1 not 32*t1+31)
+  FILE *process_clast_term_output = fopen("output-files/1.polymer-commit-bda08-forOp/7.clast_term.txt", "w+");
+  
+  pprint_term(options, process_clast_term_output, expr);
+  
+  fclose(process_clast_term_output);
+
+  /// Read the expression(eg:32*t1 not 32*t1+31) from the file
+  process_clast_term_output = fopen("output-files/1.polymer-commit-bda08-forOp/7.clast_term.txt", "r");
+
+  /// Read the contents one by one and store in a string variable for expression(eg:32*t1 not 32*t1+31)
+  std::string exprStr;
+  while (fgets(file_contents, sizeof(file_contents), process_clast_term_output)) {
+    exprStr += file_contents;
+  }
+  fclose(process_clast_term_output);
+
+
+  std::cout << "[process(clast_name *expr...)]exprStr: " << exprStr << "\n";
+  std::cout << "[process(clast_name *expr...)]constant: " << constant << "\n";
+  
+  /// ===============================================================================================================
+
+
+
+
 
   /// Next create a constant AffineExpr.
   /// This creates a constant affine expression using the extracted 64-bit integer value. 
   /// The getAffineConstantExpr method of the OpBuilder (b) is used to create this constant expression.
   AffineExpr affExpr = b.getAffineConstantExpr(constant);
 
-  // Print the created AffineExpr
-  raw_ostream &os = llvm::outs();
-  
-  os << "Affine Expression: ";
-  affExpr.print(os);
-  os << "\n";
 
 
   /// This checks if the clast_term has a variable part (var). 
@@ -438,7 +668,13 @@ LogicalResult AffineExprBuilder::process(clast_term *expr, llvm::SmallVectorImpl
   /// The resulting affine expression, which may now represent var * val or just val 
   /// if there was no variable part, is added to the affExprs vector.
   affExprs.push_back(affExpr);
-
+  
+  // Print the created AffineExpr
+  raw_ostream &os = llvm::outs();
+  
+  os << "[process(clast_name *expr...)]Resulting Affine Expression at the end of process(clast_term): ";
+  affExpr.print(os);
+  os << "\n";
   
 
   return success();
@@ -491,7 +727,39 @@ LogicalResult AffineExprBuilder::process(clast_binary *expr, llvm::SmallVectorIm
 
 LogicalResult AffineExprBuilder::process(clast_reduction *expr, llvm::SmallVectorImpl<AffineExpr> &affExprs) {
   
+  /// @F: My snitch=============================================================================================
+  char file_contents[1000];
+
+  /// Dump the clast_reduction expr in a file for expression(eg:32*t1 or 32*t1+31)
+  FILE *process_clast_reduction_output = fopen("output-files/1.polymer-commit-bda08-forOp/8.clast_reduction.txt", "a");
+  
+  pprint_reduction(options, process_clast_reduction_output, expr);
+  
+  fclose(process_clast_reduction_output);
+
+  // /// Read the expression(eg:32*t1 or 32*t1+31) from the file
+  // process_clast_reduction_output = fopen("output-files/1.polymer-commit-bda08-forOp/8.clast_reduction.txt", "r");
+
+  // /// Read the contents one by one and store in a string variable for expression(eg:32*t1 or 32*t1+31)
+  // std::string clast_reduction_exprStr;
+  // while (fgets(file_contents, sizeof(file_contents), process_clast_reduction_output)) {
+  //   clast_reduction_exprStr += file_contents;
+  // }
+  // fclose(process_clast_reduction_output);
+
+
+  // std::cout << "[process(clast_reduction *expr...)]clast_reduction_exprStr: " << clast_reduction_exprStr << "\n";
+  /// ==================================================================================================================
+
+
   if (expr->n == 1) {
+
+    std::printf("[process(clast_reduction *expr...) inside first if]expr->n == 1\n");
+    process_clast_reduction_output = fopen("output-files/1.polymer-commit-bda08-forOp/8.clast_reduction.txt", "a");
+    pprint_expr(options, process_clast_reduction_output, expr->elts[0]);
+    fclose(process_clast_reduction_output);
+
+
     if (failed(process(expr->elts[0], affExprs)))
       return failure();
     return success();
@@ -499,11 +767,17 @@ LogicalResult AffineExprBuilder::process(clast_reduction *expr, llvm::SmallVecto
 
   switch (expr->type) {
   case clast_red_sum:
+
+    std::printf("[process(clast_reduction *expr...) inside first switch]clast_red_sum\n");
+
     if (failed(processSumReduction(expr, affExprs)))
       return failure();
     break;
   case clast_red_min:
   case clast_red_max:
+
+    std::printf("[process(clast_reduction *expr...) inside first switch]clast_red_min/max\n");
+
     if (failed(processMinOrMaxReduction(expr, affExprs)))
       return failure();
     break;
@@ -532,6 +806,9 @@ LogicalResult AffineExprBuilder::processSumReduction(clast_reduction *expr, llvm
          "reduction.");
 
   for (int i = 1; i < expr->n; ++i) {
+
+    // std::printf("[processSumReduction_for_loop]: I AM HIT=======\n");
+
     assert(expr->elts[i]->type == clast_expr_term &&
            "Each element in the reduction list should be a term.");
 
@@ -1368,28 +1645,29 @@ static LogicalResult processClastLoopBound(clast_expr *expr,
 
   // char file_contents[1000];
 
-  FILE *expandedExprs_dump = fopen("output-files/1.polymer-commit-bda08-forOp/processClastLoopBound.txt", "a");
-  // clast_pprint_expr(options, expandedExprs_dump, expr);
-  // fclose(expandedExprs_dump);
+  FILE *expandedExprs_dump = fopen("output-files/1.polymer-commit-bda08-forOp/5.1processClastLoopBound.txt", "w+");
+  char file_contents[1000];
 
+  /// Dump the clast expr in a file for bound
+  clast_pprint_expr(options, expandedExprs_dump, expr);
+  
+  fclose(expandedExprs_dump);
 
-  // expandedExprs_dump = fopen("output-files/1.polymer-commit-bda08-forOp/processClastLoopBound.txt", "r");
-  // if (expandedExprs_dump == NULL) {
-  //   std::cerr << "Failed to open file.\n";
-  //   return failure();
-  // }
+  /// Read the bound from the file
+  expandedExprs_dump = fopen("output-files/1.polymer-commit-bda08-forOp/5.1processClastLoopBound.txt", "r");
+  /// Read the contents one by one and store in a string variable for bound
+  std::string boundStr;
+  while (fgets(file_contents, sizeof(file_contents), expandedExprs_dump)) {
+    boundStr += file_contents;
+  }
+  fclose(expandedExprs_dump);
 
-
-  // /// Read the contents one by one and store in a string variable
-  // std::string BoundStr;
-  // while (fgets(file_contents, sizeof(file_contents), expandedExprs_dump)) {
-  //   BoundStr += file_contents;
-  // }
-  // fclose(expandedExprs_dump);
-
-  // trace["processStmt(clast_for *forStmt)"]["getAffineLoopBound()"]["processClastLoopBound()"]["Bound from Inside function"].push_back(BoundStr);
+  std::cout << "[processClastLoopBound]boundStr: " << boundStr << "\n";
 
   
+
+
+
   SmallVector<clast_expr *, 1> expandedExprs;
 
   if (expr->type == clast_expr_red) {
@@ -1416,9 +1694,26 @@ static LogicalResult processClastLoopBound(clast_expr *expr,
   }
 
 
-
+  
   /// Iterate over items in expandedExprs(it is expanded because of min and max reductions, If there is no min/max, then there is single item(lB/uB))
   for (clast_expr *e : expandedExprs) {
+
+    /// Dump the clast expr in a file for bound
+    expandedExprs_dump = fopen("output-files/1.polymer-commit-bda08-forOp/5.1processClastLoopBound.txt", "w+");
+    clast_pprint_expr(options, expandedExprs_dump, e);
+    
+    fclose(expandedExprs_dump);
+
+    /// Read the bound from the file
+    expandedExprs_dump = fopen("output-files/1.polymer-commit-bda08-forOp/5.1processClastLoopBound.txt", "r");
+    /// Read the contents one by one and store in a string variable for bound
+    std::string clast_expr_Str_inside_for_loop;
+    while (fgets(file_contents, sizeof(file_contents), expandedExprs_dump)) {
+      clast_expr_Str_inside_for_loop += file_contents;
+    }
+    fclose(expandedExprs_dump);
+
+    std::cout << "[processClastLoopBound]clast_expr_Str_inside_for_loop: " << clast_expr_Str_inside_for_loop << "\n";
 
     /// Passing individual lB or uB and initially black exprs SV. This SV will get filled up by AffineExprs inside process()
     if (failed(builder.process(e, exprs)))
@@ -1427,14 +1722,7 @@ static LogicalResult processClastLoopBound(clast_expr *expr,
 
   }
 
-
-
-  
-
   return success();
-
-
-
 }
 
 
@@ -1446,25 +1734,44 @@ LogicalResult Importer::getAffineLoopBound(clast_expr *expr,
 
 
 
+  /// F: My snitch
+  trace["processStmt(clast_for *forStmt)"][std::to_string(counter)]["getAffineLoopBound()"]["Some Inputs"] = "forStmt->LB, lbOperands, lbMap or forStmt->UB, ubOperands, ubMap";
 
-  /// F: My snitch         
-  FILE *clast_expr_output = fopen("output-files/1.polymer-commit-bda08-forOp/6.clast_expr_from_getAffineLoopBound.txt", "a");
+
+  /// Prepare to store data for this loop statement
+  ordered_json loopBoundInfos;
+  char file_contents[1000];
+
+  /// Dump the clast expr in a file for lower bound
+  FILE *clast_for_output = fopen("output-files/1.polymer-commit-bda08-forOp/5.clast_for.txt", "w+");
+  
+  clast_pprint_expr(options, clast_for_output, expr);
+  
+  fclose(clast_for_output);
+
+  /// Read the lower bound from the file
+  clast_for_output = fopen("output-files/1.polymer-commit-bda08-forOp/5.clast_for.txt", "r");
+
+  /// Read the contents one by one and store in a string variable for lower bound
+  std::string boundStr;
+  while (fgets(file_contents, sizeof(file_contents), clast_for_output)) {
+    boundStr += file_contents;
+  }
+  fclose(clast_for_output);
+  
+  /// Log the lower bound
+  loopBoundInfos["LoopBound"] = boundStr;
+
+  
+  
+
+  /// Append the loop data to the trace for this function call
+  trace["processStmt(clast_for *forStmt)"][std::to_string(counter)]["getAffineLoopBound()"]["loop bounds"].push_back(loopBoundInfos);
 
 
 
   /// An AffineExprBuilder instance is created to help build affine expressions.
   AffineExprBuilder builder(context, symTable, &symbolTable, scop, options);
-
-
-  /// F: Dump the inputs we giving while creating instance of AffineExprBuilder class
-  trace["processStmt(clast_for *forStmt)"]["getAffineLoopBound()"]["AffineExprBuilder class instance"]["Some Inputs"] = "context, symTable, symbolTable, scop, options";
-
-
-
-
-
-  /// F: Dump the inputs for processClastLoopBound
-  trace["processStmt(clast_for *forStmt)"]["getAffineLoopBound()"]["processClastLoopBound()"]["Inputs"] = "loop bound from getAffineLoopBound() one at a time, builder, boundExprs, options";
 
 
   /// A vector boundExprs is initialized to store the resulting affine expressions.
@@ -1478,29 +1785,63 @@ LogicalResult Importer::getAffineLoopBound(clast_expr *expr,
     return failure();
 
 
-  
-   // Print the created AffineExpr type SV
-  raw_ostream &os = llvm::outs();
-  os << "Affine Expression from getAffineLoopBound(): ";  
-  for (AffineExpr e : boundExprs) {
-    e.print(os);
-    os << "\n";
-  }
-
-  os << "Dumping done------------\n";
-
-
 
   /// If looking at the upper bound, we should add 1 to all of them.
   if (isUpper)
   
     for (auto &expr : boundExprs)
-  
+      /// On the fly it adds one with upper bound after converting '1' to affine expression
+      /// And its storing the updated upper bound to boundExprs
       expr = expr + b.getAffineConstantExpr(1);
 
+
+
+  // Print the created AffineExpr type SV
+  // Use a string stream to capture the output from raw_ostream
+  std::string stringStream;
+  llvm::raw_string_ostream os1(stringStream);
+  
+  os1 << "Affine Expression after processClastLoopBound(): ";  
+  
+  for (AffineExpr e : boundExprs) {
+    e.print(os1);
+    // os1 << "\n";
+  }
+
+
+  // Flush the contents to the string stream
+  os1.flush();
+
+
+  /// F: Dump the boundexprs after processClastLoopBound
+  trace["processStmt(clast_for *forStmt)"][std::to_string(counter)]["getAffineLoopBound()"]["after processClastLoopBound()"]["boundExprs"].push_back(stringStream);
+
+
   // Insert dim operands.
-  unsigned numDims = builder.dimNames.size();
+  /// These are the names of the loop induction variables (i.e., the dimension variables) in the affine loops.
+  unsigned numDims = builder.dimNames.size(); 
+
+  /// symbolNames: These are symbols that are typically constants or parameters that are not directly related 
+  /// to the loop induction variables but might be used in the bounds of the loops.
   unsigned numSymbols = builder.symbolNames.size();
+
+
+  /// @F: My Snitch
+  for (const auto &entry : builder.dimNames) {
+    trace["processStmt(clast_for *forStmt)"][std::to_string(counter)]["getAffineLoopBound()"]["builder.dimNames"][entry.first().str()] = entry.second;
+  }
+
+  for (const auto &entry : builder.symbolNames) {
+    trace["processStmt(clast_for *forStmt)"][std::to_string(counter)]["getAffineLoopBound()"]["builder.symbolNames"][entry.first().str()] = entry.second;
+  }
+
+  trace["processStmt(clast_for *forStmt)"][std::to_string(counter)]["getAffineLoopBound()"]["builder.dimNames.size"].push_back(numDims);
+  trace["processStmt(clast_for *forStmt)"][std::to_string(counter)]["getAffineLoopBound()"]["builder.symbolNames.size"].push_back(numSymbols);
+
+
+
+
+  /// 
   operands.resize(numDims + numSymbols);
 
   for (const auto &it : builder.dimNames) {
@@ -1520,6 +1861,8 @@ LogicalResult Importer::getAffineLoopBound(clast_expr *expr,
   
   }
 
+
+
   // Create or get BlockArgument for the symbols. We assume all symbols come
   // from the BlockArgument of the generated function.
   for (const auto &it : builder.symbolNames) {
@@ -1533,14 +1876,12 @@ LogicalResult Importer::getAffineLoopBound(clast_expr *expr,
   }
 
   // Create the AffineMap for loop bound.
+  /// Example: affine.for %arg3 = affine_map<(d0) -> (d0 * 32)>(%arg0) to affine_map<(d0) -> (d0 * 32 + 32)>(%arg0) {
+  /// This below line is responsible for affine_map ir gen. It is crucial for creating affine maps that define loop bounds in MLIR.
   affMap = AffineMap::get(numDims, numSymbols, boundExprs, context);
 
-  /// F: My snitch
-  // Log exit point
-  fprintf(clast_expr_output, "\nExiting getAffineLoopBound\n");
-  fclose(clast_expr_output);
-
   return success();
+
 
 }
 
@@ -1560,9 +1901,8 @@ LogicalResult Importer::getAffineLoopBound(clast_expr *expr,
 LogicalResult Importer::processStmt(clast_for *forStmt) {
 
 
-  char file_contents[1000];
-  /// Prepare to store data for this loop statement
-  ordered_json loopBoundInfos;
+  
+  
   
   /// Get affine loop bounds
   AffineMap lbMap, ubMap;
@@ -1585,86 +1925,6 @@ LogicalResult Importer::processStmt(clast_for *forStmt) {
 
 
 
-  //// F: My snitch
-  /// Dump the clast expr in a file for lower bound
-  FILE *clast_for_output = fopen("output-files/1.polymer-commit-bda08-forOp/5.clast_for.txt", "w+");
-  if (clast_for_output == NULL) {
-    std::cerr << "Failed to open file for writing lower bound.\n";
-    return failure();
-  }
-  clast_pprint_expr(options, clast_for_output, forStmt->LB);
-  fclose(clast_for_output);
-
-
-
-
-  /// Read the lower bound from the file
-  clast_for_output = fopen("output-files/1.polymer-commit-bda08-forOp/5.clast_for.txt", "r");
-  if (clast_for_output == NULL) {
-    std::cerr << "Failed to open file for reading lower bound.\n";
-    return failure();
-  }
-
-
-
-
-  /// Read the contents one by one and store in a string variable
-  std::string lowerBoundStr;
-  while (fgets(file_contents, sizeof(file_contents), clast_for_output)) {
-    lowerBoundStr += file_contents;
-  }
-  fclose(clast_for_output);
-  /// Log the lower bound
-  loopBoundInfos["lowerBound"] = lowerBoundStr;
-
-
-
-
-  /// Dump the clast expr in a file for upper bound
-  clast_for_output = fopen("output-files/1.polymer-commit-bda08-forOp/5.clast_for.txt", "w");
-  if (clast_for_output == NULL) {
-    std::cerr << "Failed to open file for writing upper bound.\n";
-    return failure();
-  }
-  clast_pprint_expr(options, clast_for_output, forStmt->UB);
-  fclose(clast_for_output);
-
-
-
-
-  /// Read the upper bound from the file
-  clast_for_output = fopen("output-files/1.polymer-commit-bda08-forOp/5.clast_for.txt", "r");
-  if (clast_for_output == NULL) {
-    std::cerr << "Failed to open file for reading upper bound.\n";
-    return failure();
-  }
-
-
-
-  /// Read the contents one by one and store in a string variable
-  std::string upperBoundStr;
-  while (fgets(file_contents, sizeof(file_contents), clast_for_output)) {
-    upperBoundStr += file_contents;
-  }
-  fclose(clast_for_output);
-  /// Log the upper bound
-  loopBoundInfos["upperBound"] = upperBoundStr;
-
-
-
-  /// Log the lbOperands
-  for (auto &operand : lbOperands) {
-    loopBoundInfos["lbOperands"].push_back(valueToString(operand));
-  }
-  /// Log the ubOperands
-  for (auto &operand : ubOperands) {
-    loopBoundInfos["ubOperands"].push_back(valueToString(operand));
-  }
-
-  trace["processStmt(clast_for *forStmt)"]["getAffineLoopBound()"]["Inputs"]["Some Inputs"] = "lbOperands, ubOperands, lbMap, ubMap";
-
-  /// Append the loop data to the trace for this function call
-  trace["processStmt(clast_for *forStmt)"]["getAffineLoopBound()"]["Inputs"]["loop bounds"].push_back(loopBoundInfos);
 
 
 
@@ -1674,13 +1934,6 @@ LogicalResult Importer::processStmt(clast_for *forStmt) {
       failed(getAffineLoopBound(forStmt->UB, ubOperands, ubMap, /*isUpper=*/true))) {
     return failure();
   }
-
-
-
-
-  
-
-
 
 
 
@@ -1696,6 +1949,18 @@ LogicalResult Importer::processStmt(clast_for *forStmt) {
 
   }
 
+  /// Log the lbOperands
+  for (auto &operand : lbOperands) {
+    
+    trace["processStmt(clast_for *forStmt)"][std::to_string(counter)]["After getAffineLoopBound() operation"]["Operands"]["lbOperands"].push_back(valueToString(operand));
+    
+  }
+  /// Log the ubOperands
+  for (auto &operand : ubOperands) {
+  
+    trace["processStmt(clast_for *forStmt)"][std::to_string(counter)]["After getAffineLoopBound() operation"]["Operands"]["ubOperands"].push_back(valueToString(operand));
+  
+  }
 
 
   /// Create the for operation.
@@ -1703,10 +1968,13 @@ LogicalResult Importer::processStmt(clast_for *forStmt) {
   /// The loop's location is set to an unknown location in the context
   mlir::AffineForOp forOp = b.create<mlir::AffineForOp>(UnknownLoc::get(context), lbOperands, lbMap, ubOperands, ubMap, stride);
 
-
   // Update the loop IV mapping.
   auto &entryBlock = *forOp.getLoopBody().getBlocks().begin();
-  
+
+  /// @F: My snitch
+  trace["processStmt(clast_for *forStmt)"][std::to_string(counter)]["forOp after IR gen"] = operationToString(forOp);
+
+
   // TODO: confirm is there a case that forOp has multiple operands.
   assert(entryBlock.getNumArguments() == 1 && "affine.for should only have one block argument (iv).");
 
@@ -1826,12 +2094,6 @@ LogicalResult Importer::processStmt(clast_for *forStmt) {
 
   // Set the insertion point right before the terminator.
   b.setInsertionPoint(&*std::prev(prevBlock->end()));
-
-
-  
-
-
-  fclose(clast_for_output);
 
 
 
@@ -2151,6 +2413,8 @@ void Importer::initializeSymbolTable() {
     trace["processStmt(clast_root *rootStmt)"]["initializeSymbolTable()"]["symbolTable"][key].push_back(valueStr);
   }
 
+ 
+
 
 }
 
@@ -2381,7 +2645,7 @@ void Importer::initializeFuncOpInterface() {
     trace["processStmt(clast_root *rootStmt)"]["initializeFuncOpInterface()"]["symbolTable"][key].push_back(valueStr);
   }
 
-  
+ 
 
 }
 
@@ -2405,6 +2669,18 @@ LogicalResult Importer::processStmt(clast_root *rootStmt) {
 
   trace["processStmt(clast_root *rootStmt)"]["New funcOp after initializeSymbolTable() processes"] = operationToString(func);
 
+   for (const auto& entry : symbolTable) {
+    
+    
+    std::string key = entry.getKey().str();
+    mlir::Value value = entry.second;
+
+    std::string valueStr = valueToString(value);
+
+    /// Insert into JSON object, using an array to store multiple values
+    trace["processStmt(clast_root *rootStmt)"]["symbolTable"][key].push_back(valueStr);
+  }
+  
 
 
   return success();
@@ -2428,24 +2704,14 @@ LogicalResult Importer::processStmtList(clast_stmt *s) {
   auto processAndLogStmt = [&](clast_stmt *stmt, const std::string &stmtType) -> LogicalResult {
   
     rootStmt_dump = fopen("output-files/1.polymer-commit-bda08-forOp/4.rootStmt.txt", "w+");
-    if (!rootStmt_dump) {
-  
-      std::cerr << "Failed to open file for writing.\n";
-      return failure();
-  
-    }
-
+    
     /// Dump AST to file
     clast_pprint(rootStmt_dump, stmt, 0, options);
     fclose(rootStmt_dump);
 
     /// Open the file in read mode
     rootStmt_dump = fopen("output-files/1.polymer-commit-bda08-forOp/4.rootStmt.txt", "r");
-    if (!rootStmt_dump) {
-      std::cerr << "Failed to open file for reading.\n";
-      return failure();
-    }
-
+    
     /// Read the contents of the file into a string
     root_ast.clear(); /// Clear previous contents
     while (fgets(file_contents, sizeof(file_contents), rootStmt_dump)) {
@@ -2454,7 +2720,7 @@ LogicalResult Importer::processStmtList(clast_stmt *s) {
     fclose(rootStmt_dump);
 
     /// Update JSON trace
-    trace["processStmt(" + stmtType + ")"]["Input"][std::to_string(counter)] = root_ast;
+    trace["processStmt(" + stmtType + ")"][std::to_string(counter)]["Input"] = root_ast;
 
     return success();
   };
@@ -2508,7 +2774,7 @@ LogicalResult Importer::processStmtList(clast_stmt *s) {
     
 
   }
-
+  std::printf("INSIDE CLAST_STMT");
   /// Write JSON trace to a file
   std::ofstream o("output-files/1.polymer-commit-bda08-forOp/data_v2.json");
   
