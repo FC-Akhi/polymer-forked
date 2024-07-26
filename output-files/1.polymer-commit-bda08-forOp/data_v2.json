@@ -5,19 +5,19 @@
         },
         "initializeFuncOpInterface()": {
             "oslValueTable": {
+                "%1 = memref.alloc() : memref<64x64xf32>": [
+                    "A2"
+                ],
                 "<block argument> of type 'index' at index: 0": [
                     "i2",
                     "i1",
                     "i0"
                 ],
-                "%2 = memref.alloc() : memref<64x64xf32>": [
-                    "A3"
-                ],
                 "%0 = memref.alloc() : memref<64x64xf32>": [
                     "A1"
                 ],
-                "%1 = memref.alloc() : memref<64x64xf32>": [
-                    "A2"
+                "%2 = memref.alloc() : memref<64x64xf32>": [
+                    "A3"
                 ]
             },
             "getSourceFuncOp()": {
@@ -107,11 +107,19 @@
     "processStmt(clast_for *forStmt)": {
         "2": {
             "Input": "for (t1=0;t1<=1;t1++) {\n  for (t2=0;t2<=1;t2++) {\n    for (t3=0;t3<=1;t3++) {\n      for (t4=32*t1;t4<=32*t1+31;t4++) {\n        for (t5=32*t3;t5<=32*t3+31;t5++) {\n          for (t6=32*t2;t6<=32*t2+31;t6++) {\n            S0(t4, t6, t5)\n          }\n        }\n      }\n    }\n  }\n}\n",
-            "getAffineLoopBound()": {
-                "Some Inputs": "forStmt->LB, lbOperands, lbMap or forStmt->UB, ubOperands, ubMap"
-            },
             "Loop Bound 0": {
                 "getAffineLoopBound()": {
+                    "Some Inputs": "forStmt->LB, lbOperands, lbMap or forStmt->UB, ubOperands, ubMap",
+                    "processClastLoopBound()": {
+                        "process(clast_reduction *expr)": {
+                            "process(clast_expr *expr)": {
+                                "process(clast_term *expr)": {
+                                    "expr": "0",
+                                    "expr->val": 0
+                                }
+                            }
+                        }
+                    },
                     "after processClastLoopBound()": {
                         "boundExprs": "Affine Expression after processClastLoopBound(): 0"
                     },
@@ -121,6 +129,17 @@
             },
             "Loop Bound 1": {
                 "getAffineLoopBound()": {
+                    "Some Inputs": "forStmt->LB, lbOperands, lbMap or forStmt->UB, ubOperands, ubMap",
+                    "processClastLoopBound()": {
+                        "process(clast_reduction *expr)": {
+                            "process(clast_expr *expr)": {
+                                "process(clast_term *expr)": {
+                                    "expr": "1",
+                                    "expr->val": 1
+                                }
+                            }
+                        }
+                    },
                     "after processClastLoopBound()": {
                         "boundExprs": "Affine Expression after processClastLoopBound(): 2"
                     },
@@ -132,11 +151,19 @@
         },
         "3": {
             "Input": "for (t2=0;t2<=1;t2++) {\n  for (t3=0;t3<=1;t3++) {\n    for (t4=32*t1;t4<=32*t1+31;t4++) {\n      for (t5=32*t3;t5<=32*t3+31;t5++) {\n        for (t6=32*t2;t6<=32*t2+31;t6++) {\n          S0(t4, t6, t5)\n        }\n      }\n    }\n  }\n}\n",
-            "getAffineLoopBound()": {
-                "Some Inputs": "forStmt->LB, lbOperands, lbMap or forStmt->UB, ubOperands, ubMap"
-            },
             "Loop Bound 0": {
                 "getAffineLoopBound()": {
+                    "Some Inputs": "forStmt->LB, lbOperands, lbMap or forStmt->UB, ubOperands, ubMap",
+                    "processClastLoopBound()": {
+                        "process(clast_reduction *expr)": {
+                            "process(clast_expr *expr)": {
+                                "process(clast_term *expr)": {
+                                    "expr": "0",
+                                    "expr->val": 0
+                                }
+                            }
+                        }
+                    },
                     "after processClastLoopBound()": {
                         "boundExprs": "Affine Expression after processClastLoopBound(): 0"
                     },
@@ -146,6 +173,17 @@
             },
             "Loop Bound 1": {
                 "getAffineLoopBound()": {
+                    "Some Inputs": "forStmt->LB, lbOperands, lbMap or forStmt->UB, ubOperands, ubMap",
+                    "processClastLoopBound()": {
+                        "process(clast_reduction *expr)": {
+                            "process(clast_expr *expr)": {
+                                "process(clast_term *expr)": {
+                                    "expr": "1",
+                                    "expr->val": 1
+                                }
+                            }
+                        }
+                    },
                     "after processClastLoopBound()": {
                         "boundExprs": "Affine Expression after processClastLoopBound(): 2"
                     },
@@ -157,11 +195,19 @@
         },
         "4": {
             "Input": "for (t3=0;t3<=1;t3++) {\n  for (t4=32*t1;t4<=32*t1+31;t4++) {\n    for (t5=32*t3;t5<=32*t3+31;t5++) {\n      for (t6=32*t2;t6<=32*t2+31;t6++) {\n        S0(t4, t6, t5)\n      }\n    }\n  }\n}\n",
-            "getAffineLoopBound()": {
-                "Some Inputs": "forStmt->LB, lbOperands, lbMap or forStmt->UB, ubOperands, ubMap"
-            },
             "Loop Bound 0": {
                 "getAffineLoopBound()": {
+                    "Some Inputs": "forStmt->LB, lbOperands, lbMap or forStmt->UB, ubOperands, ubMap",
+                    "processClastLoopBound()": {
+                        "process(clast_reduction *expr)": {
+                            "process(clast_expr *expr)": {
+                                "process(clast_term *expr)": {
+                                    "expr": "0",
+                                    "expr->val": 0
+                                }
+                            }
+                        }
+                    },
                     "after processClastLoopBound()": {
                         "boundExprs": "Affine Expression after processClastLoopBound(): 0"
                     },
@@ -171,6 +217,17 @@
             },
             "Loop Bound 1": {
                 "getAffineLoopBound()": {
+                    "Some Inputs": "forStmt->LB, lbOperands, lbMap or forStmt->UB, ubOperands, ubMap",
+                    "processClastLoopBound()": {
+                        "process(clast_reduction *expr)": {
+                            "process(clast_expr *expr)": {
+                                "process(clast_term *expr)": {
+                                    "expr": "1",
+                                    "expr->val": 1
+                                }
+                            }
+                        }
+                    },
                     "after processClastLoopBound()": {
                         "boundExprs": "Affine Expression after processClastLoopBound(): 2"
                     },
@@ -182,11 +239,29 @@
         },
         "5": {
             "Input": "for (t4=32*t1;t4<=32*t1+31;t4++) {\n  for (t5=32*t3;t5<=32*t3+31;t5++) {\n    for (t6=32*t2;t6<=32*t2+31;t6++) {\n      S0(t4, t6, t5)\n    }\n  }\n}\n",
-            "getAffineLoopBound()": {
-                "Some Inputs": "forStmt->LB, lbOperands, lbMap or forStmt->UB, ubOperands, ubMap"
-            },
             "Loop Bound 32*t1": {
                 "getAffineLoopBound()": {
+                    "Some Inputs": "forStmt->LB, lbOperands, lbMap or forStmt->UB, ubOperands, ubMap",
+                    "processClastLoopBound()": {
+                        "process(clast_reduction *expr)": {
+                            "expr": "32*t1",
+                            "expr->n": "1",
+                            "expr->elts[0]": "32*t1",
+                            "process(clast_expr *expr)": {
+                                "process(clast_term *expr)": {
+                                    "expr": "32*t1",
+                                    "expr->val": 32,
+                                    "expr->var": "t1",
+                                    "process(clast_expr *expr)": {
+                                        "process(clast_name *expr)": {
+                                            "expr": "t1",
+                                            "expr->name": "t1"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
                     "after processClastLoopBound()": {
                         "boundExprs": "Affine Expression after processClastLoopBound(): d0 * 32"
                     },
@@ -199,6 +274,25 @@
             },
             "Loop Bound 32*t1+31": {
                 "getAffineLoopBound()": {
+                    "Some Inputs": "forStmt->LB, lbOperands, lbMap or forStmt->UB, ubOperands, ubMap",
+                    "processClastLoopBound()": {
+                        "process(clast_reduction *expr)": {
+                            "expr": "32*t1+31",
+                            "process(clast_expr *expr)": {
+                                "process(clast_term *expr)": {
+                                    "expr": "31",
+                                    "expr->val": 31,
+                                    "expr->var": "t1",
+                                    "process(clast_expr *expr)": {
+                                        "process(clast_name *expr)": {
+                                            "expr": "t1",
+                                            "expr->name": "t1"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
                     "after processClastLoopBound()": {
                         "boundExprs": "Affine Expression after processClastLoopBound(): d0 * 32 + 32"
                     },
@@ -223,11 +317,29 @@
         },
         "6": {
             "Input": "for (t5=32*t3;t5<=32*t3+31;t5++) {\n  for (t6=32*t2;t6<=32*t2+31;t6++) {\n    S0(t4, t6, t5)\n  }\n}\n",
-            "getAffineLoopBound()": {
-                "Some Inputs": "forStmt->LB, lbOperands, lbMap or forStmt->UB, ubOperands, ubMap"
-            },
             "Loop Bound 32*t3": {
                 "getAffineLoopBound()": {
+                    "Some Inputs": "forStmt->LB, lbOperands, lbMap or forStmt->UB, ubOperands, ubMap",
+                    "processClastLoopBound()": {
+                        "process(clast_reduction *expr)": {
+                            "expr": "32*t3",
+                            "expr->n": "1",
+                            "expr->elts[0]": "32*t3",
+                            "process(clast_expr *expr)": {
+                                "process(clast_term *expr)": {
+                                    "expr": "32*t3",
+                                    "expr->val": 32,
+                                    "expr->var": "t3",
+                                    "process(clast_expr *expr)": {
+                                        "process(clast_name *expr)": {
+                                            "expr": "t3",
+                                            "expr->name": "t3"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
                     "after processClastLoopBound()": {
                         "boundExprs": "Affine Expression after processClastLoopBound(): d0 * 32"
                     },
@@ -240,6 +352,25 @@
             },
             "Loop Bound 32*t3+31": {
                 "getAffineLoopBound()": {
+                    "Some Inputs": "forStmt->LB, lbOperands, lbMap or forStmt->UB, ubOperands, ubMap",
+                    "processClastLoopBound()": {
+                        "process(clast_reduction *expr)": {
+                            "expr": "32*t3+31",
+                            "process(clast_expr *expr)": {
+                                "process(clast_term *expr)": {
+                                    "expr": "31",
+                                    "expr->val": 31,
+                                    "expr->var": "t3",
+                                    "process(clast_expr *expr)": {
+                                        "process(clast_name *expr)": {
+                                            "expr": "t3",
+                                            "expr->name": "t3"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
                     "after processClastLoopBound()": {
                         "boundExprs": "Affine Expression after processClastLoopBound(): d0 * 32 + 32"
                     },
@@ -264,11 +395,29 @@
         },
         "7": {
             "Input": "for (t6=32*t2;t6<=32*t2+31;t6++) {\n  S0(t4, t6, t5)\n}\n",
-            "getAffineLoopBound()": {
-                "Some Inputs": "forStmt->LB, lbOperands, lbMap or forStmt->UB, ubOperands, ubMap"
-            },
             "Loop Bound 32*t2": {
                 "getAffineLoopBound()": {
+                    "Some Inputs": "forStmt->LB, lbOperands, lbMap or forStmt->UB, ubOperands, ubMap",
+                    "processClastLoopBound()": {
+                        "process(clast_reduction *expr)": {
+                            "expr": "32*t2",
+                            "expr->n": "1",
+                            "expr->elts[0]": "32*t2",
+                            "process(clast_expr *expr)": {
+                                "process(clast_term *expr)": {
+                                    "expr": "32*t2",
+                                    "expr->val": 32,
+                                    "expr->var": "t2",
+                                    "process(clast_expr *expr)": {
+                                        "process(clast_name *expr)": {
+                                            "expr": "t2",
+                                            "expr->name": "t2"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
                     "after processClastLoopBound()": {
                         "boundExprs": "Affine Expression after processClastLoopBound(): d0 * 32"
                     },
@@ -281,6 +430,25 @@
             },
             "Loop Bound 32*t2+31": {
                 "getAffineLoopBound()": {
+                    "Some Inputs": "forStmt->LB, lbOperands, lbMap or forStmt->UB, ubOperands, ubMap",
+                    "processClastLoopBound()": {
+                        "process(clast_reduction *expr)": {
+                            "expr": "32*t2+31",
+                            "process(clast_expr *expr)": {
+                                "process(clast_term *expr)": {
+                                    "expr": "31",
+                                    "expr->val": 31,
+                                    "expr->var": "t2",
+                                    "process(clast_expr *expr)": {
+                                        "process(clast_name *expr)": {
+                                            "expr": "t2",
+                                            "expr->name": "t2"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
                     "after processClastLoopBound()": {
                         "boundExprs": "Affine Expression after processClastLoopBound(): d0 * 32 + 32"
                     },
