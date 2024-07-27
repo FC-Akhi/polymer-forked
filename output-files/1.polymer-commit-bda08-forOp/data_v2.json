@@ -5,19 +5,19 @@
         },
         "initializeFuncOpInterface()": {
             "oslValueTable": {
-                "%1 = memref.alloc() : memref<64x64xf32>": [
-                    "A2"
-                ],
                 "<block argument> of type 'index' at index: 0": [
                     "i2",
                     "i1",
                     "i0"
                 ],
-                "%0 = memref.alloc() : memref<64x64xf32>": [
-                    "A1"
-                ],
                 "%2 = memref.alloc() : memref<64x64xf32>": [
                     "A3"
+                ],
+                "%1 = memref.alloc() : memref<64x64xf32>": [
+                    "A2"
+                ],
+                "%0 = memref.alloc() : memref<64x64xf32>": [
+                    "A1"
                 ]
             },
             "getSourceFuncOp()": {
@@ -255,7 +255,31 @@
                                     "process(clast_expr *expr)": {
                                         "process(clast_name *expr)": {
                                             "expr": "t1",
-                                            "expr->name": "t1"
+                                            "expr->name": "t1",
+                                            "symbolTable-before-checking-for-expr->name-in-it": {
+                                                "zero": "%c0 = arith.constant 0 : index",
+                                                "A1": "%2 = memref.alloc() : memref<64x64xf32>",
+                                                "A2": "%1 = memref.alloc() : memref<64x64xf32>",
+                                                "A3": "%0 = memref.alloc() : memref<64x64xf32>",
+                                                "t1": "<block argument> of type 'index' at index: 0",
+                                                "t2": "<block argument> of type 'index' at index: 0",
+                                                "t3": "<block argument> of type 'index' at index: 0"
+                                            },
+                                            "dimNames-after-checking": {
+                                                "t1": 0
+                                            },
+                                            "valueMap-after-checking": {
+                                                "<block argument> of type 'index' at index: 0": "t1"
+                                            },
+                                            "symbolTable-after-checking": {
+                                                "zero": "%c0 = arith.constant 0 : index",
+                                                "A1": "%2 = memref.alloc() : memref<64x64xf32>",
+                                                "A2": "%1 = memref.alloc() : memref<64x64xf32>",
+                                                "A3": "%0 = memref.alloc() : memref<64x64xf32>",
+                                                "t1": "<block argument> of type 'index' at index: 0",
+                                                "t2": "<block argument> of type 'index' at index: 0",
+                                                "t3": "<block argument> of type 'index' at index: 0"
+                                            }
                                         }
                                     }
                                 }
@@ -286,7 +310,31 @@
                                     "process(clast_expr *expr)": {
                                         "process(clast_name *expr)": {
                                             "expr": "t1",
-                                            "expr->name": "t1"
+                                            "expr->name": "t1",
+                                            "symbolTable-before-checking-for-expr->name-in-it": {
+                                                "zero": "%c0 = arith.constant 0 : index",
+                                                "A1": "%2 = memref.alloc() : memref<64x64xf32>",
+                                                "A2": "%1 = memref.alloc() : memref<64x64xf32>",
+                                                "A3": "%0 = memref.alloc() : memref<64x64xf32>",
+                                                "t1": "<block argument> of type 'index' at index: 0",
+                                                "t2": "<block argument> of type 'index' at index: 0",
+                                                "t3": "<block argument> of type 'index' at index: 0"
+                                            },
+                                            "dimNames-after-checking": {
+                                                "t1": 0
+                                            },
+                                            "valueMap-after-checking": {
+                                                "<block argument> of type 'index' at index: 0": "t1"
+                                            },
+                                            "symbolTable-after-checking": {
+                                                "zero": "%c0 = arith.constant 0 : index",
+                                                "A1": "%2 = memref.alloc() : memref<64x64xf32>",
+                                                "A2": "%1 = memref.alloc() : memref<64x64xf32>",
+                                                "A3": "%0 = memref.alloc() : memref<64x64xf32>",
+                                                "t1": "<block argument> of type 'index' at index: 0",
+                                                "t2": "<block argument> of type 'index' at index: 0",
+                                                "t3": "<block argument> of type 'index' at index: 0"
+                                            }
                                         }
                                     }
                                 }
@@ -333,7 +381,33 @@
                                     "process(clast_expr *expr)": {
                                         "process(clast_name *expr)": {
                                             "expr": "t3",
-                                            "expr->name": "t3"
+                                            "expr->name": "t3",
+                                            "symbolTable-before-checking-for-expr->name-in-it": {
+                                                "zero": "%c0 = arith.constant 0 : index",
+                                                "A1": "%2 = memref.alloc() : memref<64x64xf32>",
+                                                "A2": "%1 = memref.alloc() : memref<64x64xf32>",
+                                                "A3": "%0 = memref.alloc() : memref<64x64xf32>",
+                                                "t1": "<block argument> of type 'index' at index: 0",
+                                                "t2": "<block argument> of type 'index' at index: 0",
+                                                "t3": "<block argument> of type 'index' at index: 0",
+                                                "t4": "<block argument> of type 'index' at index: 0"
+                                            },
+                                            "dimNames-after-checking": {
+                                                "t3": 0
+                                            },
+                                            "valueMap-after-checking": {
+                                                "<block argument> of type 'index' at index: 0": "t3"
+                                            },
+                                            "symbolTable-after-checking": {
+                                                "zero": "%c0 = arith.constant 0 : index",
+                                                "A1": "%2 = memref.alloc() : memref<64x64xf32>",
+                                                "A2": "%1 = memref.alloc() : memref<64x64xf32>",
+                                                "A3": "%0 = memref.alloc() : memref<64x64xf32>",
+                                                "t1": "<block argument> of type 'index' at index: 0",
+                                                "t2": "<block argument> of type 'index' at index: 0",
+                                                "t3": "<block argument> of type 'index' at index: 0",
+                                                "t4": "<block argument> of type 'index' at index: 0"
+                                            }
                                         }
                                     }
                                 }
@@ -364,7 +438,33 @@
                                     "process(clast_expr *expr)": {
                                         "process(clast_name *expr)": {
                                             "expr": "t3",
-                                            "expr->name": "t3"
+                                            "expr->name": "t3",
+                                            "symbolTable-before-checking-for-expr->name-in-it": {
+                                                "zero": "%c0 = arith.constant 0 : index",
+                                                "A1": "%2 = memref.alloc() : memref<64x64xf32>",
+                                                "A2": "%1 = memref.alloc() : memref<64x64xf32>",
+                                                "A3": "%0 = memref.alloc() : memref<64x64xf32>",
+                                                "t1": "<block argument> of type 'index' at index: 0",
+                                                "t2": "<block argument> of type 'index' at index: 0",
+                                                "t3": "<block argument> of type 'index' at index: 0",
+                                                "t4": "<block argument> of type 'index' at index: 0"
+                                            },
+                                            "dimNames-after-checking": {
+                                                "t3": 0
+                                            },
+                                            "valueMap-after-checking": {
+                                                "<block argument> of type 'index' at index: 0": "t3"
+                                            },
+                                            "symbolTable-after-checking": {
+                                                "zero": "%c0 = arith.constant 0 : index",
+                                                "A1": "%2 = memref.alloc() : memref<64x64xf32>",
+                                                "A2": "%1 = memref.alloc() : memref<64x64xf32>",
+                                                "A3": "%0 = memref.alloc() : memref<64x64xf32>",
+                                                "t1": "<block argument> of type 'index' at index: 0",
+                                                "t2": "<block argument> of type 'index' at index: 0",
+                                                "t3": "<block argument> of type 'index' at index: 0",
+                                                "t4": "<block argument> of type 'index' at index: 0"
+                                            }
                                         }
                                     }
                                 }
@@ -411,7 +511,35 @@
                                     "process(clast_expr *expr)": {
                                         "process(clast_name *expr)": {
                                             "expr": "t2",
-                                            "expr->name": "t2"
+                                            "expr->name": "t2",
+                                            "symbolTable-before-checking-for-expr->name-in-it": {
+                                                "zero": "%c0 = arith.constant 0 : index",
+                                                "A1": "%2 = memref.alloc() : memref<64x64xf32>",
+                                                "A2": "%1 = memref.alloc() : memref<64x64xf32>",
+                                                "A3": "%0 = memref.alloc() : memref<64x64xf32>",
+                                                "t1": "<block argument> of type 'index' at index: 0",
+                                                "t2": "<block argument> of type 'index' at index: 0",
+                                                "t3": "<block argument> of type 'index' at index: 0",
+                                                "t4": "<block argument> of type 'index' at index: 0",
+                                                "t5": "<block argument> of type 'index' at index: 0"
+                                            },
+                                            "dimNames-after-checking": {
+                                                "t2": 0
+                                            },
+                                            "valueMap-after-checking": {
+                                                "<block argument> of type 'index' at index: 0": "t2"
+                                            },
+                                            "symbolTable-after-checking": {
+                                                "zero": "%c0 = arith.constant 0 : index",
+                                                "A1": "%2 = memref.alloc() : memref<64x64xf32>",
+                                                "A2": "%1 = memref.alloc() : memref<64x64xf32>",
+                                                "A3": "%0 = memref.alloc() : memref<64x64xf32>",
+                                                "t1": "<block argument> of type 'index' at index: 0",
+                                                "t2": "<block argument> of type 'index' at index: 0",
+                                                "t3": "<block argument> of type 'index' at index: 0",
+                                                "t4": "<block argument> of type 'index' at index: 0",
+                                                "t5": "<block argument> of type 'index' at index: 0"
+                                            }
                                         }
                                     }
                                 }
@@ -442,7 +570,35 @@
                                     "process(clast_expr *expr)": {
                                         "process(clast_name *expr)": {
                                             "expr": "t2",
-                                            "expr->name": "t2"
+                                            "expr->name": "t2",
+                                            "symbolTable-before-checking-for-expr->name-in-it": {
+                                                "zero": "%c0 = arith.constant 0 : index",
+                                                "A1": "%2 = memref.alloc() : memref<64x64xf32>",
+                                                "A2": "%1 = memref.alloc() : memref<64x64xf32>",
+                                                "A3": "%0 = memref.alloc() : memref<64x64xf32>",
+                                                "t1": "<block argument> of type 'index' at index: 0",
+                                                "t2": "<block argument> of type 'index' at index: 0",
+                                                "t3": "<block argument> of type 'index' at index: 0",
+                                                "t4": "<block argument> of type 'index' at index: 0",
+                                                "t5": "<block argument> of type 'index' at index: 0"
+                                            },
+                                            "dimNames-after-checking": {
+                                                "t2": 0
+                                            },
+                                            "valueMap-after-checking": {
+                                                "<block argument> of type 'index' at index: 0": "t2"
+                                            },
+                                            "symbolTable-after-checking": {
+                                                "zero": "%c0 = arith.constant 0 : index",
+                                                "A1": "%2 = memref.alloc() : memref<64x64xf32>",
+                                                "A2": "%1 = memref.alloc() : memref<64x64xf32>",
+                                                "A3": "%0 = memref.alloc() : memref<64x64xf32>",
+                                                "t1": "<block argument> of type 'index' at index: 0",
+                                                "t2": "<block argument> of type 'index' at index: 0",
+                                                "t3": "<block argument> of type 'index' at index: 0",
+                                                "t4": "<block argument> of type 'index' at index: 0",
+                                                "t5": "<block argument> of type 'index' at index: 0"
+                                            }
                                         }
                                     }
                                 }
@@ -470,6 +626,64 @@
                 }
             },
             "forOp after IR gen": "affine.for %arg5 = affine_map<(d0) -> (d0 * 32)>(%arg1) to affine_map<(d0) -> (d0 * 32 + 32)>(%arg1) {\n}"
+        },
+        "8": {
+            "Loop Bound 32*t2+31": {
+                "getAffineLoopBound()": {
+                    "processClastLoopBound()": {
+                        "process(clast_reduction *expr)": {
+                            "expr": "t5",
+                            "expr->n": "1",
+                            "expr->elts[0]": "t5",
+                            "process(clast_expr *expr)": {
+                                "process(clast_term *expr)": {
+                                    "expr": "t5",
+                                    "expr->val": 1,
+                                    "expr->var": "t5",
+                                    "process(clast_expr *expr)": {
+                                        "process(clast_name *expr)": {
+                                            "expr": "t5",
+                                            "expr->name": "t5",
+                                            "symbolTable-before-checking-for-expr->name-in-it": {
+                                                "zero": "%c0 = arith.constant 0 : index",
+                                                "A1": "%2 = memref.alloc() : memref<64x64xf32>",
+                                                "A2": "%1 = memref.alloc() : memref<64x64xf32>",
+                                                "A3": "%0 = memref.alloc() : memref<64x64xf32>",
+                                                "t1": "<block argument> of type 'index' at index: 0",
+                                                "t2": "<block argument> of type 'index' at index: 0",
+                                                "t3": "<block argument> of type 'index' at index: 0",
+                                                "t4": "<block argument> of type 'index' at index: 0",
+                                                "t5": "<block argument> of type 'index' at index: 0",
+                                                "t6": "<block argument> of type 'index' at index: 0"
+                                            },
+                                            "dimNames-after-checking": {
+                                                "t4": 0,
+                                                "t6": 0,
+                                                "t5": 0
+                                            },
+                                            "valueMap-after-checking": {
+                                                "<block argument> of type 'index' at index: 0": "t5"
+                                            },
+                                            "symbolTable-after-checking": {
+                                                "zero": "%c0 = arith.constant 0 : index",
+                                                "A1": "%2 = memref.alloc() : memref<64x64xf32>",
+                                                "A2": "%1 = memref.alloc() : memref<64x64xf32>",
+                                                "A3": "%0 = memref.alloc() : memref<64x64xf32>",
+                                                "t1": "<block argument> of type 'index' at index: 0",
+                                                "t2": "<block argument> of type 'index' at index: 0",
+                                                "t3": "<block argument> of type 'index' at index: 0",
+                                                "t4": "<block argument> of type 'index' at index: 0",
+                                                "t5": "<block argument> of type 'index' at index: 0",
+                                                "t6": "<block argument> of type 'index' at index: 0"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }

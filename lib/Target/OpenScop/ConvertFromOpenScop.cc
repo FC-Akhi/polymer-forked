@@ -515,89 +515,135 @@ LogicalResult AffineExprBuilder::process(clast_expr *expr, llvm::SmallVectorImpl
 
 
 
-/// Find the name in the scop to determine the type (dim or symbol). The
-/// position is decided by the size of dimNames/symbolNames.
+/// Find the name in the scop to determine the type (dim or symbol).
+/// The position is decided by the size of dimNames/symbolNames.
 /// TODO: handle the dim case.
+/// Processes a clast_name expression to determine its type (symbol or dimension)
+/// and updates affine expressions accordingly.
 LogicalResult AffineExprBuilder::process(clast_name *expr, llvm::SmallVectorImpl<AffineExpr> &affExprs) {
-  
-  /// @F: My snitch=============================================================================================
+
+  // A buffer to store file contents
   char file_contents[1000];
 
-  /// Dump the clast_term clast_expr	expr in a file for expression(eg:32*t1 not 32*t1+31)
+  // Open a file to write the expression name (e.g., t1) for debugging purposes
   FILE *process_clast_name_output = fopen("output-files/1.polymer-commit-bda08-forOp/9.clast_name.txt", "w+");
   
+  // Write the expression name to the file
   pprint_name(process_clast_name_output, expr);
   
+  // Close the file after writing
   fclose(process_clast_name_output);
 
-  /// Read the expression(eg:t1, t2, variables) from the file
+  // Open the file to read the expression name back
   process_clast_name_output = fopen("output-files/1.polymer-commit-bda08-forOp/9.clast_name.txt", "r");
 
-  /// Read the contents one by one and store in a string variable for expression(eg:t1 or t2 or any variable in loop bound)
+  // Read the file contents and store in a string variable
   std::string exprStr;
   while (fgets(file_contents, sizeof(file_contents), process_clast_name_output)) {
     exprStr += file_contents;
   }
+  // Close the file after reading
   fclose(process_clast_name_output);
 
-  
+  // Store the read expression in a trace map for debugging
   trace["processStmt(clast_for *forStmt)"][std::to_string(counter)][boundStr]["getAffineLoopBound()"]["processClastLoopBound()"]["process(clast_reduction *expr)"]["process(clast_expr *expr)"]["process(clast_term *expr)"]["process(clast_expr *expr)"]["process(clast_name *expr)"]["expr"] = exprStr;
   trace["processStmt(clast_for *forStmt)"][std::to_string(counter)][boundStr]["getAffineLoopBound()"]["processClastLoopBound()"]["process(clast_reduction *expr)"]["process(clast_expr *expr)"]["process(clast_term *expr)"]["process(clast_expr *expr)"]["process(clast_name *expr)"]["expr->name"] = std::string(expr->name);
-  ///=============================================================================================
 
 
-  /// Check if the Name is a Symbol
+  // Dump dimNames to JSON
+  for (const auto& entry : dimNames) {
+    trace["processStmt(clast_for *forStmt)"][std::to_string(counter)][boundStr]["getAffineLoopBound()"]["processClastLoopBound()"]["process(clast_reduction *expr)"]["process(clast_expr *expr)"]["process(clast_term *expr)"]["process(clast_expr *expr)"]["process(clast_name *expr)"]["dimNames-before-checking-for-expr->name-in-it"][entry.getKey().str()] = entry.getValue();
+  }
+
+  // Dump valueMap to JSON
+  for (const auto& entry : valueMap) {
+    trace["processStmt(clast_for *forStmt)"][std::to_string(counter)][boundStr]["getAffineLoopBound()"]["processClastLoopBound()"]["process(clast_reduction *expr)"]["process(clast_expr *expr)"]["process(clast_term *expr)"]["process(clast_expr *expr)"]["process(clast_name *expr)"]["valueMap-before-checking-for-expr->name-in-it"][valueToString(entry.first)] = entry.second;
+  }
+
+  // Dump symbolTable to JSON
+  for (const auto& entry : *symbolTable) {
+    trace["processStmt(clast_for *forStmt)"][std::to_string(counter)][boundStr]["getAffineLoopBound()"]["processClastLoopBound()"]["process(clast_reduction *expr)"]["process(clast_expr *expr)"]["process(clast_term *expr)"]["process(clast_expr *expr)"]["process(clast_name *expr)"]["symbolTable-before-checking-for-expr->name-in-it"][entry.getKey().str()] = valueToString(entry.getValue());
+  }
+
+
+  // Check if the name is a symbol in the scop
   if (scop->isSymbol(expr->name)) {
 
-
-    /// Start processing the Symbol
-    /// This Check if the Symbol is Already in symbolNames map. That means it has been proceesed before.
-    /// symbolNames is a StringMap type declared in AffineExprBuilder class
+    // If the symbol is already processed, find it in the symbolNames map
     if (symbolNames.find(expr->name) != symbolNames.end())
 
-      /// push the affine expression of symbol from symbolNames map to small vector affExprs
+      // Add the affine expression of the symbol to affExprs vector
       affExprs.push_back(b.getAffineSymbolExpr(symbolNames[expr->name]));
     
     else {
-      
-      
+      // If the symbol is not already processed, create a new affine symbol expression
       affExprs.push_back(b.getAffineSymbolExpr(symbolNames.size()));
       size_t numSymbols = symbolNames.size();
 
+      // Update the symbolNames map with the new symbol
       symbolNames[expr->name] = numSymbols;
 
+      // Look up the symbol in the symbolTable
       Value v = symbolTable->lookup(expr->name);
+
+      // Update the valueMap with the new symbol
       valueMap[v] = expr->name;
     }
 
   } 
   
-
-  /// Here symbolTable is of SymbolTable type which is declared from AffinExprBuilder
+  // If the name is not a symbol, check if it is a dimension in the symbolTable
   else if (mlir::Value iv = symbolTable->lookup(expr->name)) {
     
-
+    // If the dimension is already processed, find it in the dimNames map
     if (dimNames.find(expr->name) != dimNames.end())
   
+      // Add the affine expression of the dimension to affExprs vector
       affExprs.push_back(b.getAffineDimExpr(dimNames[expr->name]));
   
     else {
-  
+      // If the dimension is not already processed, create a new affine dimension expression
       affExprs.push_back(b.getAffineDimExpr(dimNames.size()));
       size_t numDims = dimNames.size();
+
+      // Update the dimNames map with the new dimension
       dimNames[expr->name] = numDims;
+
+      // Update the valueMap with the new dimension
       valueMap[iv] = expr->name;
-
-
-  
     }
   
   } else {
-  
+    // If the name is neither a symbol nor a dimension, return failure
     return failure();
-  
   }
 
+
+
+  /// @F: My snitch==================================================================================================
+  // Dump symbolNames to JSON
+  for (const auto& entry : symbolNames) {
+    trace["processStmt(clast_for *forStmt)"][std::to_string(counter)][boundStr]["getAffineLoopBound()"]["processClastLoopBound()"]["process(clast_reduction *expr)"]["process(clast_expr *expr)"]["process(clast_term *expr)"]["process(clast_expr *expr)"]["process(clast_name *expr)"]["symbolNames-after-checking"][entry.getKey().str()] = entry.getValue();
+  }
+
+  // Dump dimNames to JSON
+  for (const auto& entry : dimNames) {
+    trace["processStmt(clast_for *forStmt)"][std::to_string(counter)][boundStr]["getAffineLoopBound()"]["processClastLoopBound()"]["process(clast_reduction *expr)"]["process(clast_expr *expr)"]["process(clast_term *expr)"]["process(clast_expr *expr)"]["process(clast_name *expr)"]["dimNames-after-checking"][entry.getKey().str()] = entry.getValue();
+  }
+
+  // Dump valueMap to JSON
+  for (const auto& entry : valueMap) {
+    trace["processStmt(clast_for *forStmt)"][std::to_string(counter)][boundStr]["getAffineLoopBound()"]["processClastLoopBound()"]["process(clast_reduction *expr)"]["process(clast_expr *expr)"]["process(clast_term *expr)"]["process(clast_expr *expr)"]["process(clast_name *expr)"]["valueMap-after-checking"][valueToString(entry.first)] = entry.second;
+  }
+
+  // Dump symbolTable to JSON
+  for (const auto& entry : *symbolTable) {
+    trace["processStmt(clast_for *forStmt)"][std::to_string(counter)][boundStr]["getAffineLoopBound()"]["processClastLoopBound()"]["process(clast_reduction *expr)"]["process(clast_expr *expr)"]["process(clast_term *expr)"]["process(clast_expr *expr)"]["process(clast_name *expr)"]["symbolTable-after-checking"][entry.getKey().str()] = valueToString(entry.getValue());
+  }
+  /// ===================================================================================================================
+
+
+  // Return success if the name was processed correctly
   return success();
 
 }

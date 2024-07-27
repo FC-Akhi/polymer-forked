@@ -357,7 +357,8 @@ static mlir::FuncOp plutoTransform(mlir::FuncOp f,
   
   }
 
-  // osl_scop_print(stderr, scop->get());
+  std::printf("+++++++++++++++++++++++++++++++++++++++SCOP after transformation++++++++++++++++++++++++++++");
+  scop->print();
 
   const char *dumpClastAfterPlutoStr = nullptr;
   
