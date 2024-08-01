@@ -6,18 +6,18 @@
         "initializeFuncOpInterface()": {
             "oslValueTable": {
                 "<block argument> of type 'index' at index: 0": [
+                    "i0",
                     "i2",
-                    "i1",
-                    "i0"
+                    "i1"
                 ],
-                "%2 = memref.alloc() : memref<64x64xf32>": [
-                    "A3"
+                "%0 = memref.alloc() : memref<64x64xf32>": [
+                    "A1"
                 ],
                 "%1 = memref.alloc() : memref<64x64xf32>": [
                     "A2"
                 ],
-                "%0 = memref.alloc() : memref<64x64xf32>": [
-                    "A1"
+                "%2 = memref.alloc() : memref<64x64xf32>": [
+                    "A3"
                 ]
             },
             "getSourceFuncOp()": {
@@ -147,7 +147,14 @@
                     "builder.symbolNames.size": 0
                 }
             },
-            "forOp after IR gen": "affine.for %arg0 = 0 to 2 {\n}"
+            "forOp after IR gen": "affine.for %arg0 = 0 to 2 {\n}",
+            "symbolTable2(inside processStmt)": {
+                "zero": "%c0 = arith.constant 0 : index",
+                "A1": "%2 = memref.alloc() : memref<64x64xf32>",
+                "A2": "%1 = memref.alloc() : memref<64x64xf32>",
+                "A3": "%0 = memref.alloc() : memref<64x64xf32>",
+                "t1": "<block argument> of type 'index' at index: 0"
+            }
         },
         "3": {
             "Input": "for (t2=0;t2<=1;t2++) {\n  for (t3=0;t3<=1;t3++) {\n    for (t4=32*t1;t4<=32*t1+31;t4++) {\n      for (t5=32*t3;t5<=32*t3+31;t5++) {\n        for (t6=32*t2;t6<=32*t2+31;t6++) {\n          S0(t4, t6, t5)\n        }\n      }\n    }\n  }\n}\n",
@@ -191,7 +198,15 @@
                     "builder.symbolNames.size": 0
                 }
             },
-            "forOp after IR gen": "affine.for %arg1 = 0 to 2 {\n}"
+            "forOp after IR gen": "affine.for %arg1 = 0 to 2 {\n}",
+            "symbolTable2(inside processStmt)": {
+                "zero": "%c0 = arith.constant 0 : index",
+                "A1": "%2 = memref.alloc() : memref<64x64xf32>",
+                "A2": "%1 = memref.alloc() : memref<64x64xf32>",
+                "A3": "%0 = memref.alloc() : memref<64x64xf32>",
+                "t1": "<block argument> of type 'index' at index: 0",
+                "t2": "<block argument> of type 'index' at index: 0"
+            }
         },
         "4": {
             "Input": "for (t3=0;t3<=1;t3++) {\n  for (t4=32*t1;t4<=32*t1+31;t4++) {\n    for (t5=32*t3;t5<=32*t3+31;t5++) {\n      for (t6=32*t2;t6<=32*t2+31;t6++) {\n        S0(t4, t6, t5)\n      }\n    }\n  }\n}\n",
@@ -235,7 +250,16 @@
                     "builder.symbolNames.size": 0
                 }
             },
-            "forOp after IR gen": "affine.for %arg2 = 0 to 2 {\n}"
+            "forOp after IR gen": "affine.for %arg2 = 0 to 2 {\n}",
+            "symbolTable2(inside processStmt)": {
+                "zero": "%c0 = arith.constant 0 : index",
+                "A1": "%2 = memref.alloc() : memref<64x64xf32>",
+                "A2": "%1 = memref.alloc() : memref<64x64xf32>",
+                "A3": "%0 = memref.alloc() : memref<64x64xf32>",
+                "t1": "<block argument> of type 'index' at index: 0",
+                "t2": "<block argument> of type 'index' at index: 0",
+                "t3": "<block argument> of type 'index' at index: 0"
+            }
         },
         "5": {
             "Input": "for (t4=32*t1;t4<=32*t1+31;t4++) {\n  for (t5=32*t3;t5<=32*t3+31;t5++) {\n    for (t6=32*t2;t6<=32*t2+31;t6++) {\n      S0(t4, t6, t5)\n    }\n  }\n}\n",
@@ -279,7 +303,8 @@
                                                 "t1": "<block argument> of type 'index' at index: 0",
                                                 "t2": "<block argument> of type 'index' at index: 0",
                                                 "t3": "<block argument> of type 'index' at index: 0"
-                                            }
+                                            },
+                                            "affExprs-after-checking": "d0"
                                         }
                                     }
                                 }
@@ -334,7 +359,8 @@
                                                 "t1": "<block argument> of type 'index' at index: 0",
                                                 "t2": "<block argument> of type 'index' at index: 0",
                                                 "t3": "<block argument> of type 'index' at index: 0"
-                                            }
+                                            },
+                                            "affExprs-after-checking": "d0"
                                         }
                                     }
                                 }
@@ -361,7 +387,17 @@
                     ]
                 }
             },
-            "forOp after IR gen": "affine.for %arg3 = affine_map<(d0) -> (d0 * 32)>(%arg0) to affine_map<(d0) -> (d0 * 32 + 32)>(%arg0) {\n}"
+            "forOp after IR gen": "affine.for %arg3 = affine_map<(d0) -> (d0 * 32)>(%arg0) to affine_map<(d0) -> (d0 * 32 + 32)>(%arg0) {\n}",
+            "symbolTable2(inside processStmt)": {
+                "zero": "%c0 = arith.constant 0 : index",
+                "A1": "%2 = memref.alloc() : memref<64x64xf32>",
+                "A2": "%1 = memref.alloc() : memref<64x64xf32>",
+                "A3": "%0 = memref.alloc() : memref<64x64xf32>",
+                "t1": "<block argument> of type 'index' at index: 0",
+                "t2": "<block argument> of type 'index' at index: 0",
+                "t3": "<block argument> of type 'index' at index: 0",
+                "t4": "<block argument> of type 'index' at index: 0"
+            }
         },
         "6": {
             "Input": "for (t5=32*t3;t5<=32*t3+31;t5++) {\n  for (t6=32*t2;t6<=32*t2+31;t6++) {\n    S0(t4, t6, t5)\n  }\n}\n",
@@ -407,7 +443,8 @@
                                                 "t2": "<block argument> of type 'index' at index: 0",
                                                 "t3": "<block argument> of type 'index' at index: 0",
                                                 "t4": "<block argument> of type 'index' at index: 0"
-                                            }
+                                            },
+                                            "affExprs-after-checking": "d0"
                                         }
                                     }
                                 }
@@ -464,7 +501,8 @@
                                                 "t2": "<block argument> of type 'index' at index: 0",
                                                 "t3": "<block argument> of type 'index' at index: 0",
                                                 "t4": "<block argument> of type 'index' at index: 0"
-                                            }
+                                            },
+                                            "affExprs-after-checking": "d0"
                                         }
                                     }
                                 }
@@ -491,7 +529,18 @@
                     ]
                 }
             },
-            "forOp after IR gen": "affine.for %arg4 = affine_map<(d0) -> (d0 * 32)>(%arg2) to affine_map<(d0) -> (d0 * 32 + 32)>(%arg2) {\n}"
+            "forOp after IR gen": "affine.for %arg4 = affine_map<(d0) -> (d0 * 32)>(%arg2) to affine_map<(d0) -> (d0 * 32 + 32)>(%arg2) {\n}",
+            "symbolTable2(inside processStmt)": {
+                "zero": "%c0 = arith.constant 0 : index",
+                "A1": "%2 = memref.alloc() : memref<64x64xf32>",
+                "A2": "%1 = memref.alloc() : memref<64x64xf32>",
+                "A3": "%0 = memref.alloc() : memref<64x64xf32>",
+                "t1": "<block argument> of type 'index' at index: 0",
+                "t2": "<block argument> of type 'index' at index: 0",
+                "t3": "<block argument> of type 'index' at index: 0",
+                "t4": "<block argument> of type 'index' at index: 0",
+                "t5": "<block argument> of type 'index' at index: 0"
+            }
         },
         "7": {
             "Input": "for (t6=32*t2;t6<=32*t2+31;t6++) {\n  S0(t4, t6, t5)\n}\n",
@@ -539,7 +588,8 @@
                                                 "t3": "<block argument> of type 'index' at index: 0",
                                                 "t4": "<block argument> of type 'index' at index: 0",
                                                 "t5": "<block argument> of type 'index' at index: 0"
-                                            }
+                                            },
+                                            "affExprs-after-checking": "d0"
                                         }
                                     }
                                 }
@@ -598,7 +648,8 @@
                                                 "t3": "<block argument> of type 'index' at index: 0",
                                                 "t4": "<block argument> of type 'index' at index: 0",
                                                 "t5": "<block argument> of type 'index' at index: 0"
-                                            }
+                                            },
+                                            "affExprs-after-checking": "d0"
                                         }
                                     }
                                 }
@@ -625,7 +676,19 @@
                     ]
                 }
             },
-            "forOp after IR gen": "affine.for %arg5 = affine_map<(d0) -> (d0 * 32)>(%arg1) to affine_map<(d0) -> (d0 * 32 + 32)>(%arg1) {\n}"
+            "forOp after IR gen": "affine.for %arg5 = affine_map<(d0) -> (d0 * 32)>(%arg1) to affine_map<(d0) -> (d0 * 32 + 32)>(%arg1) {\n}",
+            "symbolTable2(inside processStmt)": {
+                "zero": "%c0 = arith.constant 0 : index",
+                "A1": "%2 = memref.alloc() : memref<64x64xf32>",
+                "A2": "%1 = memref.alloc() : memref<64x64xf32>",
+                "A3": "%0 = memref.alloc() : memref<64x64xf32>",
+                "t1": "<block argument> of type 'index' at index: 0",
+                "t2": "<block argument> of type 'index' at index: 0",
+                "t3": "<block argument> of type 'index' at index: 0",
+                "t4": "<block argument> of type 'index' at index: 0",
+                "t5": "<block argument> of type 'index' at index: 0",
+                "t6": "<block argument> of type 'index' at index: 0"
+            }
         },
         "8": {
             "Loop Bound 32*t2+31": {
@@ -675,7 +738,8 @@
                                                 "t4": "<block argument> of type 'index' at index: 0",
                                                 "t5": "<block argument> of type 'index' at index: 0",
                                                 "t6": "<block argument> of type 'index' at index: 0"
-                                            }
+                                            },
+                                            "affExprs-after-checking": "d0"
                                         }
                                     }
                                 }

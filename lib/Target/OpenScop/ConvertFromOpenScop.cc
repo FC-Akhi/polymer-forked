@@ -565,6 +565,7 @@ LogicalResult AffineExprBuilder::process(clast_name *expr, llvm::SmallVectorImpl
     trace["processStmt(clast_for *forStmt)"][std::to_string(counter)][boundStr]["getAffineLoopBound()"]["processClastLoopBound()"]["process(clast_reduction *expr)"]["process(clast_expr *expr)"]["process(clast_term *expr)"]["process(clast_expr *expr)"]["process(clast_name *expr)"]["symbolTable-before-checking-for-expr->name-in-it"][entry.getKey().str()] = valueToString(entry.getValue());
   }
 
+  
 
   // Check if the name is a symbol in the scop
   if (scop->isSymbol(expr->name)) {
@@ -575,8 +576,10 @@ LogicalResult AffineExprBuilder::process(clast_name *expr, llvm::SmallVectorImpl
       // Add the affine expression of the symbol to affExprs vector
       affExprs.push_back(b.getAffineSymbolExpr(symbolNames[expr->name]));
     
+    
+    // If the symbol is not already processed, create a new affine symbol expression
     else {
-      // If the symbol is not already processed, create a new affine symbol expression
+      
       affExprs.push_back(b.getAffineSymbolExpr(symbolNames.size()));
       size_t numSymbols = symbolNames.size();
 
@@ -592,16 +595,24 @@ LogicalResult AffineExprBuilder::process(clast_name *expr, llvm::SmallVectorImpl
 
   } 
   
+  
+
   // If the name is not a symbol, check if it is a dimension in the symbolTable
+  /// Inside symbolTable expr->name has been inserted by processStmt(clast_for...) before
   else if (mlir::Value iv = symbolTable->lookup(expr->name)) {
+    
+    printf("dimension in symbolTable: %d\n", counter);
     
     // If the dimension is already processed, find it in the dimNames map
     if (dimNames.find(expr->name) != dimNames.end())
-  
+
       // Add the affine expression of the dimension to affExprs vector
       affExprs.push_back(b.getAffineDimExpr(dimNames[expr->name]));
   
     else {
+
+      printf("dimension is not processed: %d\n", counter);
+
       // If the dimension is not already processed, create a new affine dimension expression
       affExprs.push_back(b.getAffineDimExpr(dimNames.size()));
       size_t numDims = dimNames.size();
@@ -612,6 +623,7 @@ LogicalResult AffineExprBuilder::process(clast_name *expr, llvm::SmallVectorImpl
       // Update the valueMap with the new dimension
       valueMap[iv] = expr->name;
     }
+
   
   } else {
     // If the name is neither a symbol nor a dimension, return failure
@@ -621,25 +633,50 @@ LogicalResult AffineExprBuilder::process(clast_name *expr, llvm::SmallVectorImpl
 
 
   /// @F: My snitch==================================================================================================
-  // Dump symbolNames to JSON
+  /// Dump symbolNames to JSON
   for (const auto& entry : symbolNames) {
     trace["processStmt(clast_for *forStmt)"][std::to_string(counter)][boundStr]["getAffineLoopBound()"]["processClastLoopBound()"]["process(clast_reduction *expr)"]["process(clast_expr *expr)"]["process(clast_term *expr)"]["process(clast_expr *expr)"]["process(clast_name *expr)"]["symbolNames-after-checking"][entry.getKey().str()] = entry.getValue();
   }
 
-  // Dump dimNames to JSON
+  /// Dump dimNames to JSON
   for (const auto& entry : dimNames) {
     trace["processStmt(clast_for *forStmt)"][std::to_string(counter)][boundStr]["getAffineLoopBound()"]["processClastLoopBound()"]["process(clast_reduction *expr)"]["process(clast_expr *expr)"]["process(clast_term *expr)"]["process(clast_expr *expr)"]["process(clast_name *expr)"]["dimNames-after-checking"][entry.getKey().str()] = entry.getValue();
   }
 
-  // Dump valueMap to JSON
+  /// Dump valueMap to JSON
   for (const auto& entry : valueMap) {
     trace["processStmt(clast_for *forStmt)"][std::to_string(counter)][boundStr]["getAffineLoopBound()"]["processClastLoopBound()"]["process(clast_reduction *expr)"]["process(clast_expr *expr)"]["process(clast_term *expr)"]["process(clast_expr *expr)"]["process(clast_name *expr)"]["valueMap-after-checking"][valueToString(entry.first)] = entry.second;
   }
 
-  // Dump symbolTable to JSON
+  /// Dump symbolTable to JSON
   for (const auto& entry : *symbolTable) {
     trace["processStmt(clast_for *forStmt)"][std::to_string(counter)][boundStr]["getAffineLoopBound()"]["processClastLoopBound()"]["process(clast_reduction *expr)"]["process(clast_expr *expr)"]["process(clast_term *expr)"]["process(clast_expr *expr)"]["process(clast_name *expr)"]["symbolTable-after-checking"][entry.getKey().str()] = valueToString(entry.getValue());
   }
+
+  /// Dump affExprs to JSON
+  // for (const auto& entry : affExprs) {
+  //   trace["processStmt(clast_for *forStmt)"][std::to_string(counter)][boundStr]["getAffineLoopBound()"]["processClastLoopBound()"]["process(clast_reduction *expr)"]["process(clast_expr *expr)"]["process(clast_term *expr)"]["process(clast_expr *expr)"]["process(clast_name *expr)"]["affExprs-after-checking"][entry.getKey().str()] = valueToString(entry.getValue());
+  // }
+
+  // Print the created AffineExpr type SV
+  // Use a string stream to capture the output from raw_ostream
+  std::string stringStream;
+  llvm::raw_string_ostream os1(stringStream);
+  
+  for (AffineExpr e : affExprs) {
+    e.print(os1);
+    // os1 << "\n";
+  }
+
+
+  // Flush the contents to the string stream
+  os1.flush();
+
+
+  /// F: Dump the boundexprs after processClastLoopBound
+  trace["processStmt(clast_for *forStmt)"][std::to_string(counter)][boundStr]["getAffineLoopBound()"]["processClastLoopBound()"]["process(clast_reduction *expr)"]["process(clast_expr *expr)"]["process(clast_term *expr)"]["process(clast_expr *expr)"]["process(clast_name *expr)"]["affExprs-after-checking"] = stringStream;
+
+
   /// ===================================================================================================================
 
 
@@ -1444,6 +1481,8 @@ void Importer::createCalleeAndCallerArgs(llvm::StringRef calleeName, llvm::Array
 
 void Importer::getAffineExprForLoopIterator( clast_stmt *subst, llvm::SmallVectorImpl<mlir::Value> &operands, AffineMap &affMap) {
 
+  printf("[getAffineExprForLoopIterator]I AM HIT\n");
+
   assert(CLAST_STMT_IS_A(subst, stmt_ass) && "Should use clast assignment here.");
 
   clast_assignment *substAss = reinterpret_cast<clast_assignment *>(subst);
@@ -1548,7 +1587,7 @@ void Importer::getInductionVars(clast_user_stmt *userStmt, osl_body_p body, Smal
 
 LogicalResult Importer::processStmt(clast_assignment *ass) {
 
-  printf("inside assignement\n");
+  printf("[clast assignement] I AM HIT\n");
 
   SmallVector<mlir::Value, 8> substOperands;
 
@@ -2044,13 +2083,17 @@ LogicalResult Importer::processStmt(clast_for *forStmt) {
 
   symTable->setValue(forStmt->iterator, entryBlock.getArgument(0), OslSymbolTable::LoopIV);
 
+
   // Symbol table is mutable.
   // TODO: is there a better way to improve this? Not very safe.
   mlir::Value symValue = symbolTable[forStmt->iterator];
 
+  /// This is the line which inserts 
   symbolTable[forStmt->iterator] = entryBlock.getArgument(0);
 
-
+  for (const auto& entry : symbolTable) {
+    trace["processStmt(clast_for *forStmt)"][std::to_string(counter)]["symbolTable2(inside processStmt)"][entry.getKey().str()] = valueToString(entry.getValue());
+  }
 
 
   // ******************Create the loop body****************************
@@ -2065,6 +2108,8 @@ LogicalResult Importer::processStmt(clast_for *forStmt) {
 
   // Restore the symbol value.
   symbolTable[forStmt->iterator] = symValue;
+
+  
 
   // TODO: affine.parallel currently has more restrictions on what it can cover.
   // So we don't create a parallel op at this stage.
