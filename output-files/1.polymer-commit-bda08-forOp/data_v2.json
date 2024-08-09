@@ -7,17 +7,17 @@
             "oslValueTable": {
                 "<block argument> of type 'index' at index: 0": [
                     "i0",
-                    "i2",
-                    "i1"
+                    "i1",
+                    "i2"
                 ],
-                "%0 = memref.alloc() : memref<64x64xf32>": [
-                    "A1"
+                "%2 = memref.alloc() : memref<64x64xf32>": [
+                    "A3"
                 ],
                 "%1 = memref.alloc() : memref<64x64xf32>": [
                     "A2"
                 ],
-                "%2 = memref.alloc() : memref<64x64xf32>": [
-                    "A3"
+                "%0 = memref.alloc() : memref<64x64xf32>": [
+                    "A1"
                 ]
             },
             "getSourceFuncOp()": {
@@ -289,6 +289,7 @@
                                                 "t2": "<block argument> of type 'index' at index: 0",
                                                 "t3": "<block argument> of type 'index' at index: 0"
                                             },
+                                            "builder.dimNames.size": 0,
                                             "dimNames-after-checking": {
                                                 "t1": 0
                                             },
@@ -345,6 +346,7 @@
                                                 "t2": "<block argument> of type 'index' at index: 0",
                                                 "t3": "<block argument> of type 'index' at index: 0"
                                             },
+                                            "builder.dimNames.size": 0,
                                             "dimNames-after-checking": {
                                                 "t1": 0
                                             },
@@ -428,6 +430,7 @@
                                                 "t3": "<block argument> of type 'index' at index: 0",
                                                 "t4": "<block argument> of type 'index' at index: 0"
                                             },
+                                            "builder.dimNames.size": 0,
                                             "dimNames-after-checking": {
                                                 "t3": 0
                                             },
@@ -486,6 +489,7 @@
                                                 "t3": "<block argument> of type 'index' at index: 0",
                                                 "t4": "<block argument> of type 'index' at index: 0"
                                             },
+                                            "builder.dimNames.size": 0,
                                             "dimNames-after-checking": {
                                                 "t3": 0
                                             },
@@ -572,6 +576,7 @@
                                                 "t4": "<block argument> of type 'index' at index: 0",
                                                 "t5": "<block argument> of type 'index' at index: 0"
                                             },
+                                            "builder.dimNames.size": 0,
                                             "dimNames-after-checking": {
                                                 "t2": 0
                                             },
@@ -632,6 +637,7 @@
                                                 "t4": "<block argument> of type 'index' at index: 0",
                                                 "t5": "<block argument> of type 'index' at index: 0"
                                             },
+                                            "builder.dimNames.size": 0,
                                             "dimNames-after-checking": {
                                                 "t2": 0
                                             },
@@ -719,6 +725,7 @@
                                                 "t5": "<block argument> of type 'index' at index: 0",
                                                 "t6": "<block argument> of type 'index' at index: 0"
                                             },
+                                            "builder.dimNames.size": 0,
                                             "dimNames-after-checking": {
                                                 "t4": 0,
                                                 "t6": 0,

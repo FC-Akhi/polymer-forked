@@ -376,12 +376,15 @@ namespace {
                       CloogOptions *options)
         : b(context), context(context), scop(scop), symTable(symTable),
           symbolTable(symbolTable), options(options) {
+      
       reset();
     }
 
     LogicalResult process(clast_expr *expr,
                           llvm::SmallVectorImpl<AffineExpr> &affExprs);
 
+    /// @brief This is for reset dimNames and symbolNames map. Though it is no use for matmul case, because for each loop bounds we are creating brand new 
+    /// object of this class. Where we get empty maps 
     void reset();
 
     LogicalResult process(clast_name *expr, llvm::SmallVectorImpl<AffineExpr> &affExprs);
@@ -568,6 +571,7 @@ LogicalResult AffineExprBuilder::process(clast_name *expr, llvm::SmallVectorImpl
   
 
   // Check if the name is a symbol in the scop
+  /// Cases like parameters
   if (scop->isSymbol(expr->name)) {
 
     // If the symbol is already processed, find it in the symbolNames map
@@ -599,6 +603,7 @@ LogicalResult AffineExprBuilder::process(clast_name *expr, llvm::SmallVectorImpl
 
   // If the name is not a symbol, check if it is a dimension in the symbolTable
   /// Inside symbolTable expr->name has been inserted by processStmt(clast_for...) before
+  /// Cases like loop IV
   else if (mlir::Value iv = symbolTable->lookup(expr->name)) {
     
     printf("dimension in symbolTable: %d\n", counter);
@@ -614,8 +619,11 @@ LogicalResult AffineExprBuilder::process(clast_name *expr, llvm::SmallVectorImpl
       printf("dimension is not processed: %d\n", counter);
 
       // If the dimension is not already processed, create a new affine dimension expression
+      /// dimNames.size() will give 0 for all cases
       affExprs.push_back(b.getAffineDimExpr(dimNames.size()));
       size_t numDims = dimNames.size();
+
+      trace["processStmt(clast_for *forStmt)"][std::to_string(counter)][boundStr]["getAffineLoopBound()"]["processClastLoopBound()"]["process(clast_reduction *expr)"]["process(clast_expr *expr)"]["process(clast_term *expr)"]["process(clast_expr *expr)"]["process(clast_name *expr)"]["builder.dimNames.size"] = numDims;
 
       // Update the dimNames map with the new dimension
       dimNames[expr->name] = numDims;
